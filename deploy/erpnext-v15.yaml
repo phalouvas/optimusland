@@ -5,7 +5,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: phalouvas/swissmed-worker:version-15
+    image: phalouvas/optimusland-worker:version-15
     networks:
       bench-network: null
       mariadb-network: null
@@ -22,7 +22,7 @@ services:
     entrypoint:
       - bash
       - -c
-    image: phalouvas/swissmed-worker:version-15
+    image: phalouvas/optimusland-worker:version-15
     networks:
       bench-network: null
       mariadb-network: null
@@ -51,7 +51,7 @@ services:
       REDIS_CACHE: redis-cache:6379
       REDIS_QUEUE: redis-queue:6379
       SOCKETIO_PORT: "9000"
-    image: phalouvas/swissmed-worker:version-15
+    image: phalouvas/optimusland-worker:version-15
     networks:
       bench-network: null
       mariadb-network: null
@@ -74,22 +74,22 @@ services:
     environment:
       BACKEND: backend:8000
       CLIENT_MAX_BODY_SIZE: 50m
-      FRAPPE_SITE_NAME_HEADER: app.swissmedhealth.com
+      FRAPPE_SITE_NAME_HEADER: optimuslandcy.com
       PROXY_READ_TIMEOUT: "120"
       SOCKETIO: websocket:9000
       UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
       UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
       UPSTREAM_REAL_IP_RECURSIVE: "off"
-    image: phalouvas/swissmed-worker:version-15
+    image: phalouvas/optimusland-worker:version-15
     labels:
       traefik.docker.network: traefik-public
       traefik.enable: "true"
       traefik.http.routers.erpnext-v15-http.entrypoints: http
       traefik.http.routers.erpnext-v15-http.middlewares: https-redirect
-      traefik.http.routers.erpnext-v15-http.rule: Host(`app.swissmedhealth.com`)
+      traefik.http.routers.erpnext-v15-http.rule: Host(`optimuslandcy.com`)
       traefik.http.routers.erpnext-v15-http.service: erpnext-v15
       traefik.http.routers.erpnext-v15-https.entrypoints: https
-      traefik.http.routers.erpnext-v15-https.rule: Host(`app.swissmedhealth.com`)
+      traefik.http.routers.erpnext-v15-https.rule: Host(`optimuslandcy.com`)
       traefik.http.routers.erpnext-v15-https.service: erpnext-v15
       traefik.http.routers.erpnext-v15-https.tls: "true"
       traefik.http.routers.erpnext-v15-https.tls.certresolver: le
@@ -120,7 +120,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: phalouvas/swissmed-worker:version-15
+    image: phalouvas/optimusland-worker:version-15
     networks:
       bench-network: null
       mariadb-network: null
@@ -141,7 +141,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: phalouvas/swissmed-worker:version-15
+    image: phalouvas/optimusland-worker:version-15
     networks:
       bench-network: null
       mariadb-network: null
@@ -182,7 +182,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: phalouvas/swissmed-worker:version-15
+    image: phalouvas/optimusland-worker:version-15
     networks:
       bench-network: null
       mariadb-network: null
@@ -201,7 +201,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: phalouvas/swissmed-worker:version-15
+    image: phalouvas/optimusland-worker:version-15
     networks:
       bench-network: null
       mariadb-network: null
@@ -232,12 +232,12 @@ x-backend-defaults:
   depends_on:
     configurator:
       condition: service_completed_successfully
-  image: phalouvas/swissmed-worker:version-15
+  image: phalouvas/optimusland-worker:version-15
   pull_policy: if_not_present
   volumes:
     - sites:/home/frappe/frappe-bench/sites
 x-customizable-image:
-  image: phalouvas/swissmed-worker:version-15
+  image: phalouvas/optimusland-worker:version-15
   pull_policy: if_not_present
 x-depends-on-configurator:
   depends_on:

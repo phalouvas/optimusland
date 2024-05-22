@@ -12,15 +12,7 @@
     "branch": "version-15"
   },
   {
-    "url": "https://github.com/frappe/health",
-    "branch": "version-15"
-  },
-  {
-    "url": "https://github.com/phalouvas/swissmedhealth",
-    "branch": "master"
-  },
-  {
-    "url": "https://github.com/kainotomo/invoice2erpnext.git",
+    "url": "https://github.com/phalouvas/optimusland",
     "branch": "master"
   }
 ]
