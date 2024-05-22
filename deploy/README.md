@@ -66,11 +66,11 @@ Below should be run on local machine to avoid availability on production server.
     --build-arg=PYTHON_VERSION=3.11.6 \
     --build-arg=NODE_VERSION=18.18.2 \
     --build-arg=APPS_JSON_BASE64=$APPS_JSON_BASE64 \
-    --tag=phalouvas/optimusland-worker:15.24.0 \
+    --tag=phalouvas/optimusland-worker:15.24.1 \
     --file=images/azure/Containerfile .
 
-  docker push phalouvas/optimusland-worker:15.24.0
-  docker tag phalouvas/optimusland-worker:15.24.0 phalouvas/optimusland-worker:version-15
+  docker push phalouvas/optimusland-worker:15.24.1
+  docker tag phalouvas/optimusland-worker:15.24.1 phalouvas/optimusland-worker:version-15
   docker push phalouvas/optimusland-worker:version-15
 
     ```
