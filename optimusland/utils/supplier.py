@@ -13,6 +13,10 @@ def get_supplier_unlinked_journal_entries(supplier_name: str):
 			AND T1.`docstatus` < 2;
 	""", as_dict=False)
 
+	# if no unlinked journal entries return true
+	if not supplier_jv:
+		return True
+	
 	customer_jv = frappe.db.sql(f"""
 		SELECT 
 			T1.`parent`
