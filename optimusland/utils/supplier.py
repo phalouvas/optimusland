@@ -50,8 +50,9 @@ def create_purchase_invoice(production_plan_name: str):
 		stock_entry_details = frappe.get_all("Stock Entry Detail", filters={"parent": stock_entry.name, "serial_and_batch_bundle": ["Not Like", None]}, fields=["item_code", "is_finished_item", "serial_and_batch_bundle", "qty"])
 		for stock_entry_detail in stock_entry_details:
 			if stock_entry_detail.is_finished_item:
-				item_description = stock_entry_detail.item_code
-				rate = frappe.db.get_value("Item", item_description, "valuation_rate")
+				finished_item_code = stock_entry_detail.item_code
+				rate = frappe.db.get_value("Item", finished_item_code, "valuation_rate")
+				item_description = frappe.db.get_value("Item", finished_item_code, "description")
 			else:
 				qty = stock_entry_detail.qty
 				item_code = stock_entry_detail.item_code
@@ -73,6 +74,7 @@ def create_purchase_invoice(production_plan_name: str):
 						raise Exception("Multiple purchase receipts found.")
 				else:
 					raise Exception("Multiple batch numbers found.")
+
 		result = {
 			"supplier": supplier,
 			"purchase_receipt": voucher_no,
@@ -111,5 +113,5 @@ def create_purchase_invoice(production_plan_name: str):
 				})
 			
 			purchase_invoice.insert()
-			#purchase_invoice.submit()
-	return True
+
+	return purchase_invoice.name

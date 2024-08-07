@@ -14,6 +14,7 @@ frappe.ui.form.on('Production Plan', {
                                 message: __('Purchase Invoice created successfully'),
                                 indicator: 'green'
                             });
+                            frappe.set_route('Form', 'Purchase Invoice', response.message);
                         }
                     }
                 });
