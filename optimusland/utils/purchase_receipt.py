@@ -4,8 +4,8 @@ from erpnext.manufacturing.doctype.work_order.work_order import get_item_details
 from frappe.utils import add_to_date, flt, getdate, now_datetime, nowdate
 
 @frappe.whitelist()
-def create_production_plan(purchase_receipt_name: str):
-    purchase_receipt = frappe.get_doc("Purchase Receipt", purchase_receipt_name)
+def create_production_plan(purchase_receipt, method=None):
+    purchase_receipt = frappe.get_doc("Purchase Receipt", purchase_receipt.name)
     batch_nos = []
     for item in purchase_receipt.items:
         if item.batch_no:
@@ -68,11 +68,13 @@ def fix_stock_entry(se: dict, batch_no: str, item_code: str):
     for item in se.items:
         if item.item_code == item_code:
             item.batch_no = batch_no
+            item.use_serial_batch_fields = 1
             source_item = {
                 "item_code": item.item_code,
                 "s_warehouse": item.t_warehouse,
                 "qty": item.qty,
                 "batch_no": item.batch_no,
+                "use_serial_batch_fields": 1,
                 "is_finished_item": 0,
             }
             if item.is_finished_item == 0:

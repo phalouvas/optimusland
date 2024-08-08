@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"leswq5WQjT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Optimus Land</span>\",\"col\":12}},{\"id\":\"h3MjqoWFDv\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Purchase Receipt\",\"col\":3}},{\"id\":\"ka1hdlY5I7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Production Plan\",\"col\":3}}]",
+ "content": "[{\"id\":\"leswq5WQjT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Optimus Land</span>\",\"col\":12}},{\"id\":\"eL1AQy3XtU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}}]",
  "creation": "2024-08-07 07:12:05.448457",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Optimus Land",
  "links": [],
- "modified": "2024-08-07 07:27:58.590798",
+ "modified": "2024-08-08 11:25:06.403147",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Optimus Land",
@@ -26,20 +26,12 @@
  "sequence_id": 1.0,
  "shortcuts": [
   {
-   "color": "Grey",
-   "doc_view": "New",
-   "label": "New Purchase Receipt",
-   "link_to": "Purchase Receipt",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Blue",
+   "color": "Yellow",
    "doc_view": "List",
-   "format": "{} Open",
-   "label": "Production Plan",
-   "link_to": "Production Plan",
-   "stats_filter": "[[\"Production Plan\",\"status\",\"not in\",[\"Closed\",\"Cancelled\",\"Completed\"],false]]",
+   "format": "{} To Bill",
+   "label": "Purchase Receipt",
+   "link_to": "Purchase Receipt",
+   "stats_filter": "[[\"Purchase Receipt\",\"status\",\"=\",\"To Bill\",false]]",
    "type": "DocType"
   }
  ],

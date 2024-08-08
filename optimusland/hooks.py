@@ -30,9 +30,7 @@ app_license = "mit"
 # include js in doctype views
 doctype_js = {
     "Purchase Invoice" : "public/js/purchase_invoice.js",
-    "Supplier" : "public/js/supplier.js",
-    "Purchase Receipt" : "public/js/purchase_receipt.js",
-    "Production Plan" : "public/js/production_plan.js"
+    "Supplier" : "public/js/supplier.js"
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -127,13 +125,11 @@ doctype_js = {
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+    "Purchase Receipt": {
+        "on_submit": "optimusland.utils.purchase_receipt.create_production_plan"
+    }
+}
 
 # Scheduled Tasks
 # ---------------
