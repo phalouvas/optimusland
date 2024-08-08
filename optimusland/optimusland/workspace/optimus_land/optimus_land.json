@@ -1,0 +1,39 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"leswq5WQjT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Optimus Land</span>\",\"col\":12}},{\"id\":\"eL1AQy3XtU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}}]",
+ "creation": "2024-08-07 07:12:05.448457",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "heart-active",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Optimus Land",
+ "links": [],
+ "modified": "2024-08-08 11:25:06.403147",
+ "modified_by": "Administrator",
+ "module": "Optimusland",
+ "name": "Optimus Land",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "format": "{} To Bill",
+   "label": "Purchase Receipt",
+   "link_to": "Purchase Receipt",
+   "stats_filter": "[[\"Purchase Receipt\",\"status\",\"=\",\"To Bill\",false]]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Optimus Land"
+}

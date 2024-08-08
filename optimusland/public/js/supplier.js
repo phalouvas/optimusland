@@ -11,7 +11,6 @@ frappe.ui.form.on("Supplier", {
                 callback: function(response) {
                     if (response.message) {
                         if (response.message.length > 0) {
-                            console.log(response.message);
                             frappe.show_alert({
                                 message:__(response.message),
                                 indicator:'yellow'

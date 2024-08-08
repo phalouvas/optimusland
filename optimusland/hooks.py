@@ -125,13 +125,11 @@ doctype_js = {
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+    "Purchase Receipt": {
+        "on_submit": "optimusland.utils.purchase_receipt.create_production_plan"
+    }
+}
 
 # Scheduled Tasks
 # ---------------

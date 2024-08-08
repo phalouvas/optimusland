@@ -1,5 +1,6 @@
 import frappe
 from frappe import _, qb, throw
+from collections import defaultdict
 
 @frappe.whitelist()
 def get_supplier_unlinked_journal_entries(supplier_name: str):
