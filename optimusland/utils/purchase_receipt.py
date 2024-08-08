@@ -19,7 +19,10 @@ def create_production_plan(purchase_receipt, method=None):
 	)
     
     for purchase_receipt_item in purchase_receipt.items:
-        item_details = get_item_details(purchase_receipt_item.item_code)
+        try:
+            item_details = get_item_details(purchase_receipt_item.item_code)
+        except Exception:
+            continue
         purchase_receipt_item.bom_no = item_details.bom_no
         pln.append(
 			"po_items",
@@ -32,6 +35,9 @@ def create_production_plan(purchase_receipt, method=None):
 				"warehouse": purchase_receipt_item.warehouse,
 			},
 		)
+
+    if not pln.po_items:
+        return
 
     pln.insert()
     pln.submit()
