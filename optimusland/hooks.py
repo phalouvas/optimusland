@@ -128,7 +128,10 @@ doctype_js = {
 doc_events = {
     "Purchase Receipt": {
         "on_submit": "optimusland.utils.purchase_receipt.create_production_plan"
-    }
+    },
+    "Delivery Note": {
+        "before_submit": "optimusland.utils.delivery_note.add_shipping_cost"
+    },
 }
 
 # Scheduled Tasks
