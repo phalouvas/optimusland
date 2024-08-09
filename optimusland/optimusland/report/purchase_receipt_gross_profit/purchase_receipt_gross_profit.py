@@ -57,7 +57,7 @@ class GrossProfitGenerator:
 			as_dict=1
 		)
 
-		delivery_notes_items = frappe.db.sql(
+		sales_invoices_items = frappe.db.sql(
 			"""
 			SELECT
 				dn.name AS delivery_note,
@@ -66,7 +66,7 @@ class GrossProfitGenerator:
 				sii.item_name,
 				sii.qty as selling_qty,
 				sii.net_rate as selling_rate,
-				sii.incoming_rate as incoming_rate,
+				sii.incoming_rate as cost_rate,
 				sii.amount as selling_amount,
 				sbe.batch_no
 			FROM
@@ -99,5 +99,17 @@ class GrossProfitGenerator:
 			},
 			as_dict=1
 		)
+
+		for sales_invoices_item in sales_invoices_items:
+			for purchase_receipt_item in purchase_receipts_items:
+				if sales_invoices_item.batch_no == purchase_receipt_item.batch_no:
+					sales_invoices_item["purchase_receipt"] = purchase_receipt_item.purchase_receipt
+					sales_invoices_item["supplier"] = purchase_receipt_item.supplier
+					sales_invoices_item["purchase_qty"] = purchase_receipt_item.purchase_qty
+					sales_invoices_item["purchase_rate"] = purchase_receipt_item.purchase_rate
+					sales_invoices_item["purchase_amount"] = purchase_receipt_item.purchase_amount
+					sales_invoices_item["gross_profit_rate"] = round(sales_invoices_item.selling_rate - sales_invoices_item.cost_rate, 3)
+					sales_invoices_item["gross_profit_percentage"] = round(((sales_invoices_item.selling_rate - sales_invoices_item.cost_rate) / sales_invoices_item.selling_rate) * 100)
+					sales_invoices_item["gross_profit_amount"] = sales_invoices_item.selling_amount - (sales_invoices_item.selling_qty * sales_invoices_item.cost_rate)
 
 		pass
