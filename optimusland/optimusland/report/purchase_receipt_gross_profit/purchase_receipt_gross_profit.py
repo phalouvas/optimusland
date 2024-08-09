@@ -2,36 +2,180 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe import _
+from frappe import _, scrub
 
 def execute(filters=None):
 	if not filters:
 		filters = frappe._dict()
-	filters.currency = frappe.get_cached_value("Company", filters.company, "default_currency")
 
 	gross_profit_data = GrossProfitGenerator(filters)
 
-	columns, data = [], []
+	data = []
+
+	group_wise_columns = frappe._dict(
+		{
+			"supplier": [
+				"purchase_receipt",
+			]			
+		}
+	)
+
+	columns = get_columns(group_wise_columns, filters)
+	data = gross_profit_data.sales_invoices_items
 
 	return columns, data
+
+def get_columns(group_wise_columns, filters):
+	columns = [		
+		{
+			"label": _("Supplier"),
+			"fieldtype": "Link",
+			"fieldname": "supplier",
+			"options": "Supplier",
+			"width": 100,
+		},
+		{
+			"label": _("Posting Date"),
+			"fieldtype": "Date",
+			"fieldname": "posting_date",
+		},
+		{
+			"label": _("Batch No"),
+			"fieldtype": "Link",
+			"fieldname": "batch_no",
+			"options": "Batch",
+			"width": 100,
+		},
+		{
+			"label": _("Currency"),
+			"fieldtype": "Link",
+			"fieldname": "currency",
+			"options": "Currency",
+			"hidden": 1,
+			"width": 50,
+		},
+		{
+			"label": _("Purchase Receipt"),
+			"fieldtype": "Link",
+			"fieldname": "purchase_receipt",
+			"options": "Purchase Receipt",
+			"width": 120,
+		},
+		{
+			"label": _("Item Code"),
+			"fieldtype": "Link",
+			"fieldname": "item_code",
+			"options": "Item",
+			"width": 100,
+		},
+		{
+			"label": _("Item Name"),
+			"fieldtype": "Data",
+			"fieldname": "item_name",
+			"width": 200,
+		},
+		{
+			"label": _("Purchase Qty"),
+			"fieldtype": "Float",
+			"fieldname": "purchase_qty",
+			"width": 100,
+		},
+		{
+			"label": _("Purchase Rate"),
+			"fieldtype": "Currency",
+			"fieldname": "purchase_rate",
+			"options": "currency",
+			"width": 100,
+		},
+		{
+			"label": _("Purchase Amount"),
+			"fieldtype": "Currency",
+			"fieldname": "purchase_amount",
+			"options": "currency",
+			"width": 100,
+		},
+		{
+			"label": _("Sales Invoice"),
+			"fieldtype": "Link",
+			"fieldname": "sales_invoice",
+			"options": "Sales Invoice",
+			"width": 120,
+		},
+		{
+			"label": _("Delivery Note"),
+			"fieldtype": "Link",
+			"fieldname": "delivery_note",
+			"options": "Delivery Note",
+			"width": 120,
+		},
+		{
+			"label": _("Selling Qty"),
+			"fieldtype": "Float",
+			"fieldname": "selling_qty",
+			"width": 100,
+		},
+		{
+			"label": _("Selling Rate"),
+			"fieldtype": "Currency",
+			"fieldname": "selling_rate",
+			"options": "currency",
+			"width": 100,
+		},
+		{
+			"label": _("Cost Rate"),
+			"fieldtype": "Currency",
+			"fieldname": "cost_rate",
+			"options": "currency",
+			"width": 100,
+		},
+		{
+			"label": _("Selling Amount"),
+			"fieldtype": "Currency",
+			"fieldname": "selling_amount",
+			"options": "currency",
+			"width": 100,
+		},
+		{
+			"label": _("Gross Profit Rate"),
+			"fieldtype": "Percent",
+			"fieldname": "gross_profit_rate",
+			"width": 100,
+		},
+		{
+			"label": _("Gross Profit Percentage"),
+			"fieldtype": "Percent",
+			"fieldname": "gross_profit_percentage",
+			"width": 100,
+		},
+		{
+			"label": _("Gross Profit Amount"),
+			"fieldtype": "Currency",
+			"fieldname": "gross_profit_amount",
+			"options": "currency",
+			"width": 100,
+		},
+	]
+
+	return columns
 
 class GrossProfitGenerator:
 	def __init__(self, filters):
 		self.filters = filters
 		self.validate_filters()
-		self.get_purchase_receipt_items()
+		self.get_sales_invoices_items()
 
 	def validate_filters(self):
 		if not self.filters.company:
 			frappe.throw(_("Company is required"))
 
-	def get_purchase_receipt_items(self):
+	def get_sales_invoices_items(self):
 
 		purchase_receipts_items = frappe.db.sql(
 			"""
 			SELECT
 				pr.name AS purchase_receipt,
 				pr.supplier,
+				pr.posting_date,
 				pri.item_code,
 				pri.item_name,
 				pri.qty as purchase_qty,
@@ -60,8 +204,9 @@ class GrossProfitGenerator:
 		sales_invoices_items = frappe.db.sql(
 			"""
 			SELECT
-				dn.name AS delivery_note,
+				si.name AS sales_invoice,
 				si.customer,
+				dn.name AS delivery_note,
 				sii.item_code,
 				sii.item_name,
 				sii.qty as selling_qty,
@@ -104,6 +249,7 @@ class GrossProfitGenerator:
 			for purchase_receipt_item in purchase_receipts_items:
 				if sales_invoices_item.batch_no == purchase_receipt_item.batch_no:
 					sales_invoices_item["purchase_receipt"] = purchase_receipt_item.purchase_receipt
+					sales_invoices_item["posting_date"] = purchase_receipt_item.posting_date
 					sales_invoices_item["supplier"] = purchase_receipt_item.supplier
 					sales_invoices_item["purchase_qty"] = purchase_receipt_item.purchase_qty
 					sales_invoices_item["purchase_rate"] = purchase_receipt_item.purchase_rate
@@ -111,5 +257,9 @@ class GrossProfitGenerator:
 					sales_invoices_item["gross_profit_rate"] = round(sales_invoices_item.selling_rate - sales_invoices_item.cost_rate, 3)
 					sales_invoices_item["gross_profit_percentage"] = round(((sales_invoices_item.selling_rate - sales_invoices_item.cost_rate) / sales_invoices_item.selling_rate) * 100)
 					sales_invoices_item["gross_profit_amount"] = sales_invoices_item.selling_amount - (sales_invoices_item.selling_qty * sales_invoices_item.cost_rate)
+
+		sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
+		self.sales_invoices_items = sales_invoices_items
+		
 
 		pass
