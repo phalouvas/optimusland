@@ -30,7 +30,8 @@ app_license = "mit"
 # include js in doctype views
 doctype_js = {
     "Purchase Invoice" : "public/js/purchase_invoice.js",
-    "Supplier" : "public/js/supplier.js"
+    "Supplier" : "public/js/supplier.js",
+    "Delivery Note" : "public/js/delivery_note.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -128,9 +129,6 @@ doctype_js = {
 doc_events = {
     "Purchase Receipt": {
         "on_submit": "optimusland.utils.purchase_receipt.create_production_plan"
-    },
-    "Delivery Note": {
-        "before_submit": "optimusland.utils.delivery_note.add_shipping_cost"
     },
 }
 

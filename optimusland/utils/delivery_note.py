@@ -1,7 +1,9 @@
 import frappe
 
 @frappe.whitelist()
-def add_shipping_cost(doc, method=None):
+#def add_shipping_cost(doc, method=None):
+def add_shipping_cost(delivery_note_name: str):
+    doc = frappe.get_doc("Delivery Note", delivery_note_name)
     if doc.custom_shipping_cost:
         
         stock_entry = frappe.new_doc("Stock Entry")
@@ -36,7 +38,11 @@ def add_shipping_cost(doc, method=None):
                 "use_serial_batch_fields": 1,
                 "is_finished_item": 1,
             })
+            stock_entry.insert()
+            stock_entry.submit()
+            doc.custom_is_shipping_cost_added = 1
+            doc.save()
+    else:
+        frappe.throw("No shipping cost defined. Either select a Purchase Invoice or enter a custom shipping cost.")
 
-    stock_entry.insert()
-    stock_entry.submit()
-    pass
+    return True
