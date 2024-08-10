@@ -24,6 +24,35 @@ frappe.query_reports["Purchase Receipt Gross Profit"] = {
 			fieldtype: "Date",
 			default: erpnext.utils.get_fiscal_year(frappe.datetime.get_today(), true)[2],
 			reqd: 1,
-		}
+		},
+		{
+			fieldname: "status",
+			label: __("Status"),
+			fieldtype: "Select",
+			options:
+				"\nTo Bill\nCompleted\nReturn Issued\nCancelled\nClosed",
+			default: "To Bill",
+		},
+		{
+			fieldname: "purchase_receipt",
+			label: __("Purchase Receipt"),
+			fieldtype: "Link",
+			options: "Purchase Receipt",	
+			get_query: function () {
+				var company = frappe.query_report.get_filter_value("company");
+				return {
+					filters: [
+						["Purchase Receipt", "company", "=", company],
+						["Purchase Receipt", "docstatus", "=", 1]
+					],
+				};
+			},		
+		},
+		{
+			fieldname: "supplier",
+			label: __("Supplier"),
+			fieldtype: "Link",
+			options: "Supplier",
+		},
 	]
 };

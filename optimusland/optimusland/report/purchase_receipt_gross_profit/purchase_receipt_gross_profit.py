@@ -12,20 +12,12 @@ def execute(filters=None):
 
 	data = []
 
-	group_wise_columns = frappe._dict(
-		{
-			"supplier": [
-				"purchase_receipt",
-			]			
-		}
-	)
-
-	columns = get_columns(group_wise_columns, filters)
+	columns = get_columns(filters)
 	data = gross_profit_data.sales_invoices_items
 
 	return columns, data
 
-def get_columns(group_wise_columns, filters):
+def get_columns(filters):
 	columns = [		
 		{
 			"label": _("Supplier"),
@@ -166,7 +158,7 @@ def get_columns(group_wise_columns, filters):
 
 class GrossProfitGenerator:
 	def __init__(self, filters):
-		self.filters = filters
+		self.filters = frappe._dict(filters)
 		self.validate_filters()
 		self.get_sales_invoices_items()
 
@@ -175,6 +167,14 @@ class GrossProfitGenerator:
 			frappe.throw(_("Company is required"))
 
 	def get_sales_invoices_items(self):
+
+		conditions = ""
+		if self.filters.status:
+			conditions += f" AND pr.status = %(status)s"
+		if self.filters.supplier:
+			conditions += f" AND pr.supplier = %(supplier)s"
+		if self.filters.purchase_receipt:
+			conditions += f" AND pr.name = %(purchase_receipt)s"
 
 		purchase_receipts_items = frappe.db.sql(
 			"""
@@ -199,12 +199,9 @@ class GrossProfitGenerator:
 				AND pr.posting_date BETWEEN %(from_date)s AND %(to_date)s
 				AND sbe.batch_no IS NOT NULL
 				AND sbe.batch_no != ''
-			""",
-			{
-				"company": self.filters.company,
-				"from_date": self.filters.from_date,
-				"to_date": self.filters.to_date
-			},
+				{conditions}
+			""".format(conditions=conditions),
+			self.filters,
 			as_dict=1
 		)
 
@@ -242,13 +239,10 @@ class GrossProfitGenerator:
 						AND pr.posting_date BETWEEN %(from_date)s AND %(to_date)s
 						AND sbe.batch_no IS NOT NULL
 						AND sbe.batch_no != ''
+						{conditions}
 				)
-			""",
-			{
-				"company": self.filters.company,
-				"from_date": self.filters.from_date,
-				"to_date": self.filters.to_date
-			},
+			""".format(conditions=conditions),
+			self.filters,
 			as_dict=1
 		)
 
