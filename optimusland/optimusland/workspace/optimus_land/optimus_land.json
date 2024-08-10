@@ -63,7 +63,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-08-09 09:14:51.399423",
+ "modified": "2024-08-09 09:48:00.350122",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Optimus Land",
@@ -89,13 +89,6 @@
    "type": "DocType"
   },
   {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Gross Profit",
-   "link_to": "Gross Profit",
-   "type": "Report"
-  },
-  {
    "color": "Yellow",
    "doc_view": "List",
    "format": "{} Unpaid",
@@ -103,6 +96,13 @@
    "link_to": "Sales Invoice",
    "stats_filter": "[[\"Sales Invoice\",\"status\",\"in\",[\"Unpaid\",\"Unpaid and Discounted\",\"Partly Paid and Discounted\",\"Overdue and Discounted\",\"Overdue\",null],false]]",
    "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Gross Profit",
+   "link_to": "Purchase Receipt Gross Profit",
+   "type": "Report"
   },
   {
    "color": "Yellow",
