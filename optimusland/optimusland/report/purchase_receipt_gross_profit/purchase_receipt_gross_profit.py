@@ -24,20 +24,17 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"fieldname": "supplier",
 			"options": "Supplier",
-			"width": 100,
 		},
 		{
 			"label": _("Purchase Receipt"),
 			"fieldtype": "Link",
 			"fieldname": "purchase_receipt",
 			"options": "Purchase Receipt",
-			"width": 120,
 		},
 		{
 			"label": _("Status"),
 			"fieldtype": "Data",
 			"fieldname": "status",
-			"width": 100
 		},
 		{
 			"label": _("Posting Date"),
@@ -49,7 +46,6 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"fieldname": "batch_no",
 			"options": "Batch",
-			"width": 100,
 		},
 		{
 			"label": _("Currency"),
@@ -64,93 +60,79 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"fieldname": "item_code",
 			"options": "Item",
-			"width": 100,
 		},
 		{
 			"label": _("Item Name"),
 			"fieldtype": "Data",
 			"fieldname": "item_name",
-			"width": 200,
 		},
 		{
 			"label": _("Purchase Qty"),
-			"fieldtype": "Float",
+			"fieldtype": "Integer",
 			"fieldname": "purchase_qty",
-			"width": 100,
 		},
 		{
 			"label": _("Purchase Rate"),
 			"fieldtype": "Currency",
 			"fieldname": "purchase_rate",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Purchase Amount"),
 			"fieldtype": "Currency",
 			"fieldname": "purchase_amount",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Sales Invoice"),
 			"fieldtype": "Link",
 			"fieldname": "sales_invoice",
 			"options": "Sales Invoice",
-			"width": 120,
 		},
 		{
 			"label": _("Delivery Note"),
 			"fieldtype": "Link",
 			"fieldname": "delivery_note",
 			"options": "Delivery Note",
-			"width": 120,
 		},
 		{
 			"label": _("Selling Qty"),
-			"fieldtype": "Float",
+			"fieldtype": "Integer",
 			"fieldname": "selling_qty",
-			"width": 100,
 		},
 		{
 			"label": _("Selling Rate"),
 			"fieldtype": "Currency",
 			"fieldname": "selling_rate",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Cost Rate"),
 			"fieldtype": "Currency",
 			"fieldname": "cost_rate",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Selling Amount"),
 			"fieldtype": "Currency",
 			"fieldname": "selling_amount",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Gross Profit Rate"),
 			"fieldtype": "Percent",
 			"fieldname": "gross_profit_rate",
-			"width": 100,
 		},
 		{
 			"label": _("Gross Profit Percentage"),
 			"fieldtype": "Percent",
 			"fieldname": "gross_profit_percentage",
-			"width": 100,
 		},
 		{
 			"label": _("Gross Profit Amount"),
 			"fieldtype": "Currency",
 			"fieldname": "gross_profit_amount",
 			"options": "currency",
-			"width": 100,
 		},
 	]
 
@@ -160,6 +142,7 @@ class GrossProfitGenerator:
 	def __init__(self, filters):
 		self.filters = frappe._dict(filters)
 		self.validate_filters()
+		self.sales_invoices_items =	[]
 		self.get_sales_invoices_items()
 
 	def validate_filters(self):
@@ -204,6 +187,9 @@ class GrossProfitGenerator:
 			self.filters,
 			as_dict=1
 		)
+
+		if not purchase_receipts_items:
+			return 
 
 		batch_nos = ','.join([f"'{item.batch_no}'" for item in purchase_receipts_items])
 
@@ -281,6 +267,5 @@ class GrossProfitGenerator:
 
 		sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
 		self.sales_invoices_items = sales_invoices_items
-		
 
 		pass
