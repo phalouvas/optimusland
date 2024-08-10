@@ -24,20 +24,17 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"fieldname": "supplier",
 			"options": "Supplier",
-			"width": 100,
 		},
 		{
 			"label": _("Purchase Receipt"),
 			"fieldtype": "Link",
 			"fieldname": "purchase_receipt",
 			"options": "Purchase Receipt",
-			"width": 120,
 		},
 		{
 			"label": _("Status"),
 			"fieldtype": "Data",
 			"fieldname": "status",
-			"width": 100
 		},
 		{
 			"label": _("Posting Date"),
@@ -49,7 +46,6 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"fieldname": "batch_no",
 			"options": "Batch",
-			"width": 100,
 		},
 		{
 			"label": _("Currency"),
@@ -64,93 +60,79 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"fieldname": "item_code",
 			"options": "Item",
-			"width": 100,
 		},
 		{
 			"label": _("Item Name"),
 			"fieldtype": "Data",
 			"fieldname": "item_name",
-			"width": 200,
 		},
 		{
 			"label": _("Purchase Qty"),
-			"fieldtype": "Float",
+			"fieldtype": "Integer",
 			"fieldname": "purchase_qty",
-			"width": 100,
 		},
 		{
 			"label": _("Purchase Rate"),
 			"fieldtype": "Currency",
 			"fieldname": "purchase_rate",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Purchase Amount"),
 			"fieldtype": "Currency",
 			"fieldname": "purchase_amount",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Sales Invoice"),
 			"fieldtype": "Link",
 			"fieldname": "sales_invoice",
 			"options": "Sales Invoice",
-			"width": 120,
 		},
 		{
 			"label": _("Delivery Note"),
 			"fieldtype": "Link",
 			"fieldname": "delivery_note",
 			"options": "Delivery Note",
-			"width": 120,
 		},
 		{
 			"label": _("Selling Qty"),
-			"fieldtype": "Float",
+			"fieldtype": "Integer",
 			"fieldname": "selling_qty",
-			"width": 100,
 		},
 		{
 			"label": _("Selling Rate"),
 			"fieldtype": "Currency",
 			"fieldname": "selling_rate",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Cost Rate"),
 			"fieldtype": "Currency",
 			"fieldname": "cost_rate",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Selling Amount"),
 			"fieldtype": "Currency",
 			"fieldname": "selling_amount",
 			"options": "currency",
-			"width": 100,
 		},
 		{
 			"label": _("Gross Profit Rate"),
 			"fieldtype": "Percent",
 			"fieldname": "gross_profit_rate",
-			"width": 100,
 		},
 		{
 			"label": _("Gross Profit Percentage"),
 			"fieldtype": "Percent",
 			"fieldname": "gross_profit_percentage",
-			"width": 100,
 		},
 		{
 			"label": _("Gross Profit Amount"),
 			"fieldtype": "Currency",
 			"fieldname": "gross_profit_amount",
 			"options": "currency",
-			"width": 100,
 		},
 	]
 
@@ -160,6 +142,7 @@ class GrossProfitGenerator:
 	def __init__(self, filters):
 		self.filters = frappe._dict(filters)
 		self.validate_filters()
+		self.sales_invoices_items =	[]
 		self.get_sales_invoices_items()
 
 	def validate_filters(self):
@@ -205,63 +188,84 @@ class GrossProfitGenerator:
 			as_dict=1
 		)
 
+		if not purchase_receipts_items:
+			return 
+
+		batch_nos = ','.join([f"'{item.batch_no}'" for item in purchase_receipts_items])
+
+		delivery_notes_items = frappe.db.sql(
+			"""
+			SELECT
+				dn.name AS delivery_note,
+				dn.customer,
+				dni.item_code,
+				sbe.batch_no
+			FROM
+				`tabDelivery Note Item` dni
+			LEFT JOIN `tabDelivery Note` dn ON dn.name = dni.parent
+			LEFT JOIN `tabSerial and Batch Entry` sbe ON sbe.parent = dni.serial_and_batch_bundle
+			WHERE
+				dn.docstatus = 1
+				AND dn.company = %(company)s
+				AND sbe.batch_no IN ({batch_nos})
+			""".format(batch_nos=batch_nos),
+			self.filters,
+			as_dict=1
+		)
+
+		delivery_notes_names = ','.join([f"'{item.delivery_note}'" for item in delivery_notes_items])
+
+		for delivery_note_item in delivery_notes_items:
+			for purchase_receipt_item in purchase_receipts_items:
+				if delivery_note_item.batch_no == purchase_receipt_item.batch_no:
+					delivery_note_item["purchase_receipt"] = purchase_receipt_item.purchase_receipt
+					delivery_note_item["status"] = purchase_receipt_item.status
+					delivery_note_item["posting_date"] = purchase_receipt_item.posting_date
+					delivery_note_item["supplier"] = purchase_receipt_item.supplier
+					delivery_note_item["purchase_qty"] = purchase_receipt_item.purchase_qty
+					delivery_note_item["purchase_rate"] = purchase_receipt_item.purchase_rate
+					delivery_note_item["purchase_amount"] = purchase_receipt_item.purchase_amount
+
 		sales_invoices_items = frappe.db.sql(
 			"""
 			SELECT
 				si.name AS sales_invoice,
 				si.customer,
-				dn.name AS delivery_note,
+				sii.delivery_note AS delivery_note,
 				sii.item_code,
 				sii.item_name,
 				sii.qty as selling_qty,
 				sii.net_rate as selling_rate,
 				sii.incoming_rate as cost_rate,
-				sii.amount as selling_amount,
-				sbe.batch_no
+				sii.amount as selling_amount
 			FROM
 				`tabSales Invoice Item` sii
 			LEFT JOIN `tabSales Invoice` si ON si.name = sii.parent
-			LEFT JOIN `tabDelivery Note` dn ON dn.name = sii.delivery_note
-			LEFT JOIN `tabDelivery Note Item` dni ON dn.name = dni.parent
-			LEFT JOIN `tabSerial and Batch Entry` sbe ON sbe.parent = dni.serial_and_batch_bundle
 			WHERE
 				si.docstatus = 1
 				AND si.company = %(company)s
-				AND sbe.batch_no IN (
-					SELECT DISTINCT sbe.batch_no
-					FROM
-						`tabPurchase Receipt Item` pri
-					LEFT JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
-					LEFT JOIN `tabSerial and Batch Entry` sbe ON sbe.parent = pri.serial_and_batch_bundle
-					WHERE
-						pr.docstatus = 1
-						AND pr.company = %(company)s
-						AND pr.posting_date BETWEEN %(from_date)s AND %(to_date)s
-						AND sbe.batch_no IS NOT NULL
-						AND sbe.batch_no != ''
-						{conditions}
-				)
-			""".format(conditions=conditions),
+				AND sii.delivery_note IN ({delivery_notes_names})
+			""".format(delivery_notes_names=delivery_notes_names),
 			self.filters,
 			as_dict=1
 		)
 
 		for sales_invoices_item in sales_invoices_items:
-			for purchase_receipt_item in purchase_receipts_items:
-				if sales_invoices_item.batch_no == purchase_receipt_item.batch_no:
-					sales_invoices_item["purchase_receipt"] = purchase_receipt_item.purchase_receipt
-					sales_invoices_item["status"] = purchase_receipt_item.status
-					sales_invoices_item["posting_date"] = purchase_receipt_item.posting_date
-					sales_invoices_item["supplier"] = purchase_receipt_item.supplier
-					sales_invoices_item["purchase_qty"] = purchase_receipt_item.purchase_qty
-					sales_invoices_item["purchase_rate"] = purchase_receipt_item.purchase_rate
-					sales_invoices_item["purchase_amount"] = purchase_receipt_item.purchase_amount
+			for delivery_note_item in delivery_notes_items:
+				if sales_invoices_item.delivery_note == delivery_note_item.delivery_note and sales_invoices_item.item_code == delivery_note_item.item_code:
+					sales_invoices_item["purchase_receipt"] = delivery_note_item.purchase_receipt
+					sales_invoices_item["status"] = delivery_note_item.status
+					sales_invoices_item["posting_date"] = delivery_note_item.posting_date
+					sales_invoices_item["supplier"] = delivery_note_item.supplier
+					sales_invoices_item["purchase_qty"] = delivery_note_item.purchase_qty
+					sales_invoices_item["purchase_rate"] = delivery_note_item.purchase_rate
+					sales_invoices_item["purchase_amount"] = delivery_note_item.purchase_amount
+					sales_invoices_item["batch_no"] = delivery_note_item.batch_no
 					sales_invoices_item["gross_profit_rate"] = round(sales_invoices_item.selling_rate - sales_invoices_item.cost_rate, 3)
 					sales_invoices_item["gross_profit_percentage"] = round(((sales_invoices_item.selling_rate - sales_invoices_item.cost_rate) / sales_invoices_item.selling_rate) * 100)
 					sales_invoices_item["gross_profit_amount"] = sales_invoices_item.selling_amount - (sales_invoices_item.selling_qty * sales_invoices_item.cost_rate)
 
 		sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
 		self.sales_invoices_items = sales_invoices_items
-		
 
 		pass
