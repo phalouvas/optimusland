@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"leswq5WQjT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Market Cycle</span>\",\"col\":12}},{\"id\":\"eL1AQy3XtU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"id\":\"fJpCeRShKK\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Note\",\"col\":3}},{\"id\":\"2g4DAxH-3A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":3}},{\"id\":\"wLC4pxh47I\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Gross Profit\",\"col\":3}},{\"id\":\"K22Pn37xrA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"dVe1UdaFKH\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"CNeJWT16oG\",\"type\":\"card\",\"data\":{\"card_name\":\"People\",\"col\":4}}]",
+ "content": "[{\"id\":\"leswq5WQjT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Market Cycle</span>\",\"col\":12}},{\"id\":\"XpU6jxgv6V\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Batch\",\"col\":3}},{\"id\":\"eL1AQy3XtU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"id\":\"OFXfW4-rcX\",\"type\":\"spacer\",\"data\":{\"col\":6}},{\"id\":\"fJpCeRShKK\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Note\",\"col\":3}},{\"id\":\"2g4DAxH-3A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":3}},{\"id\":\"uBRKWYnSAv\",\"type\":\"spacer\",\"data\":{\"col\":6}},{\"id\":\"wLC4pxh47I\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier Gross Profit\",\"col\":3}},{\"id\":\"K22Pn37xrA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"dVe1UdaFKH\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"CNeJWT16oG\",\"type\":\"card\",\"data\":{\"card_name\":\"People\",\"col\":4}}]",
  "creation": "2024-08-07 07:12:05.448457",
  "custom_blocks": [],
  "docstatus": 0,
@@ -63,7 +63,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-08-09 09:48:00.350122",
+ "modified": "2024-08-10 07:24:39.274751",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Optimus Land",
@@ -72,13 +72,25 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [
-  {
-   "role": "All"
-  }
- ],
+ "roles": [],
  "sequence_id": 1.0,
  "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Supplier Gross Profit",
+   "link_to": "Purchase Receipt Gross Profit",
+   "type": "Report"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "format": "{} Open",
+   "label": "Batch",
+   "link_to": "Batch",
+   "stats_filter": "[[\"Batch\",\"disabled\",\"=\",0,false],[\"Batch\",\"batch_qty\",\">\",0,false]]",
+   "type": "DocType"
+  },
   {
    "color": "Yellow",
    "doc_view": "List",
@@ -96,13 +108,6 @@
    "link_to": "Sales Invoice",
    "stats_filter": "[[\"Sales Invoice\",\"status\",\"in\",[\"Unpaid\",\"Unpaid and Discounted\",\"Partly Paid and Discounted\",\"Overdue and Discounted\",\"Overdue\",null],false]]",
    "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Gross Profit",
-   "link_to": "Purchase Receipt Gross Profit",
-   "type": "Report"
   },
   {
    "color": "Yellow",
