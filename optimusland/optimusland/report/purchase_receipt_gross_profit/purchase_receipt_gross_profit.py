@@ -35,6 +35,19 @@ def get_columns(group_wise_columns, filters):
 			"width": 100,
 		},
 		{
+			"label": _("Purchase Receipt"),
+			"fieldtype": "Link",
+			"fieldname": "purchase_receipt",
+			"options": "Purchase Receipt",
+			"width": 120,
+		},
+		{
+			"label": _("Status"),
+			"fieldtype": "Data",
+			"fieldname": "status",
+			"width": 100
+		},
+		{
 			"label": _("Posting Date"),
 			"fieldtype": "Date",
 			"fieldname": "posting_date",
@@ -53,14 +66,7 @@ def get_columns(group_wise_columns, filters):
 			"options": "Currency",
 			"hidden": 1,
 			"width": 50,
-		},
-		{
-			"label": _("Purchase Receipt"),
-			"fieldtype": "Link",
-			"fieldname": "purchase_receipt",
-			"options": "Purchase Receipt",
-			"width": 120,
-		},
+		},		
 		{
 			"label": _("Item Code"),
 			"fieldtype": "Link",
@@ -175,6 +181,7 @@ class GrossProfitGenerator:
 			SELECT
 				pr.name AS purchase_receipt,
 				pr.supplier,
+				pr.status,
 				pr.posting_date,
 				pri.item_code,
 				pri.item_name,
@@ -249,6 +256,7 @@ class GrossProfitGenerator:
 			for purchase_receipt_item in purchase_receipts_items:
 				if sales_invoices_item.batch_no == purchase_receipt_item.batch_no:
 					sales_invoices_item["purchase_receipt"] = purchase_receipt_item.purchase_receipt
+					sales_invoices_item["status"] = purchase_receipt_item.status
 					sales_invoices_item["posting_date"] = purchase_receipt_item.posting_date
 					sales_invoices_item["supplier"] = purchase_receipt_item.supplier
 					sales_invoices_item["purchase_qty"] = purchase_receipt_item.purchase_qty
