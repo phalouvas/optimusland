@@ -8,8 +8,13 @@ def create_production_plan(purchase_receipt, method=None):
     purchase_receipt = frappe.get_doc("Purchase Receipt", purchase_receipt.name)
     batch_nos = []
     for item in purchase_receipt.items:
-        if item.batch_no:
-            batch_nos.append({"item_code": item.item_code, "batch_no": item.batch_no})
+        batch_no = None
+        if item.batch_no == None and item.serial_and_batch_bundle:
+                batch_no = frappe.db.sql(f"SELECT batch_no FROM `tabSerial and Batch Entry` WHERE parent = '{item.serial_and_batch_bundle}'", as_dict=True)[0].batch_no
+        else:
+            batch_no = item.batch_no
+        if batch_no:
+            batch_nos.append({"item_code": item.item_code, "batch_no": batch_no})
 
     pln = frappe.get_doc(
 		{
