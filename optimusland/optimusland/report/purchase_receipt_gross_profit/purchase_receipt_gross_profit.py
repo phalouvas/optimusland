@@ -120,7 +120,7 @@ def get_columns(filters):
 		},
 		{
 			"label": _("Gross Profit Rate"),
-			"fieldtype": "Percent",
+			"fieldtype": "Currency",
 			"fieldname": "gross_profit_rate",
 		},
 		{
