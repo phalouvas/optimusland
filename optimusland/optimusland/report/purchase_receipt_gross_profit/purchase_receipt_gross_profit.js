@@ -54,5 +54,11 @@ frappe.query_reports["Purchase Receipt Gross Profit"] = {
 			fieldtype: "Link",
 			options: "Supplier",
 		},
+		{
+			fieldname: "wished_earning_percentage",
+			label: __("Wished Earning %"),
+			fieldtype: "Int",
+			default: 5,
+		}
 	]
 };

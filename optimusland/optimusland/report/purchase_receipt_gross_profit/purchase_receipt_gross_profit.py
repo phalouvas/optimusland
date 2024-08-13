@@ -65,6 +65,18 @@ def get_columns(filters):
 			"label": _("Item Name"),
 			"fieldtype": "Data",
 			"fieldname": "item_name",
+		},		
+		{
+			"label": _("Sales Invoice"),
+			"fieldtype": "Link",
+			"fieldname": "sales_invoice",
+			"options": "Sales Invoice",
+		},
+		{
+			"label": _("Delivery Note"),
+			"fieldtype": "Link",
+			"fieldname": "delivery_note",
+			"options": "Delivery Note",
 		},
 		{
 			"label": _("Purchase Qty"),
@@ -84,18 +96,6 @@ def get_columns(filters):
 			"options": "currency",
 		},
 		{
-			"label": _("Sales Invoice"),
-			"fieldtype": "Link",
-			"fieldname": "sales_invoice",
-			"options": "Sales Invoice",
-		},
-		{
-			"label": _("Delivery Note"),
-			"fieldtype": "Link",
-			"fieldname": "delivery_note",
-			"options": "Delivery Note",
-		},
-		{
 			"label": _("Selling Qty"),
 			"fieldtype": "Integer",
 			"fieldname": "selling_qty",
@@ -107,9 +107,9 @@ def get_columns(filters):
 			"options": "currency",
 		},
 		{
-			"label": _("Cost Rate"),
+			"label": _("Incoming Rate"),
 			"fieldtype": "Currency",
-			"fieldname": "cost_rate",
+			"fieldname": "incoming_rate",
 			"options": "currency",
 		},
 		{
@@ -119,19 +119,41 @@ def get_columns(filters):
 			"options": "currency",
 		},
 		{
-			"label": _("Gross Profit Rate"),
+			"label": _("Incoming Profit Rate"),
 			"fieldtype": "Currency",
-			"fieldname": "gross_profit_rate",
+			"fieldname": "incoming_profit_rate",
 		},
 		{
-			"label": _("Gross Profit Percentage"),
+			"label": _("Incoming Profit Percentage"),
 			"fieldtype": "Percent",
-			"fieldname": "gross_profit_percentage",
+			"fieldname": "incoming_profit_percentage",
 		},
 		{
-			"label": _("Gross Profit Amount"),
+			"label": _("Incoming Profit Amount"),
 			"fieldtype": "Currency",
-			"fieldname": "gross_profit_amount",
+			"fieldname": "incoming_profit_amount",
+			"options": "currency",
+		},
+		{
+			"label": _("Wished Profit Rate"),
+			"fieldtype": "Currency",
+			"fieldname": "wished_profit_rate",
+		},
+		{
+			"label": _("Wished Profit Amount"),
+			"fieldtype": "Currency",
+			"fieldname": "wished_profit_amount",
+			"options": "currency",
+		},
+		{
+			"label": _("Supplier Rate"),
+			"fieldtype": "Currency",
+			"fieldname": "supplier_rate",
+		},
+		{
+			"label": _("Supplier Amount"),
+			"fieldtype": "Currency",
+			"fieldname": "supplier_amount",
 			"options": "currency",
 		},
 	]
@@ -140,6 +162,7 @@ def get_columns(filters):
 
 class GrossProfitGenerator:
 	def __init__(self, filters):
+		filters.wished_earning_percentage = filters.wished_earning_percentage or 0
 		self.filters = frappe._dict(filters)
 		self.validate_filters()
 		self.sales_invoices_items =	[]
@@ -236,7 +259,7 @@ class GrossProfitGenerator:
 				sii.item_name,
 				sii.qty as selling_qty,
 				sii.net_rate as selling_rate,
-				sii.incoming_rate as cost_rate,
+				sii.incoming_rate as incoming_rate,
 				sii.amount as selling_amount
 			FROM
 				`tabSales Invoice Item` sii
@@ -261,9 +284,16 @@ class GrossProfitGenerator:
 					sales_invoices_item["purchase_rate"] = delivery_note_item.purchase_rate
 					sales_invoices_item["purchase_amount"] = delivery_note_item.purchase_amount
 					sales_invoices_item["batch_no"] = delivery_note_item.batch_no
-					sales_invoices_item["gross_profit_rate"] = round(sales_invoices_item.selling_rate - sales_invoices_item.cost_rate, 3)
-					sales_invoices_item["gross_profit_percentage"] = round(((sales_invoices_item.selling_rate - sales_invoices_item.cost_rate) / sales_invoices_item.selling_rate) * 100)
-					sales_invoices_item["gross_profit_amount"] = sales_invoices_item.selling_amount - (sales_invoices_item.selling_qty * sales_invoices_item.cost_rate)
+					incoming_profit_rate = sales_invoices_item.selling_rate - sales_invoices_item.incoming_rate
+					sales_invoices_item["incoming_profit_rate"] = round(incoming_profit_rate, 3)
+					sales_invoices_item["incoming_profit_percentage"] = round((incoming_profit_rate / sales_invoices_item.selling_rate) * 100)
+					sales_invoices_item["incoming_profit_amount"] = round(sales_invoices_item.selling_qty * incoming_profit_rate, 3)
+					wished_profit_rate = ( self.filters.wished_earning_percentage / 100 ) * sales_invoices_item.selling_rate
+					sales_invoices_item["wished_profit_rate"] = round(wished_profit_rate, 3)
+					sales_invoices_item["wished_profit_amount"] = round(sales_invoices_item.selling_qty * wished_profit_rate, 3)
+					supplier_rate = sales_invoices_item.selling_rate + sales_invoices_item.purchase_rate - sales_invoices_item.incoming_rate - wished_profit_rate
+					sales_invoices_item["supplier_rate"] = round(supplier_rate, 3)
+					sales_invoices_item["supplier_amount"] = round(sales_invoices_item.selling_qty * supplier_rate, 3)
 
 		sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
 		self.sales_invoices_items = sales_invoices_items
