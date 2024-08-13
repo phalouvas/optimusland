@@ -2,9 +2,10 @@ import frappe
 
 @frappe.whitelist()
 #def add_shipping_cost(doc, method=None):
-def add_shipping_cost(delivery_note_name: str):
+def add_shipping_cost(delivery_note_name: str, custom_shipping_cost: float):
     doc = frappe.get_doc("Delivery Note", delivery_note_name)
-    if doc.custom_shipping_cost:
+        
+    if custom_shipping_cost:
         
         default_fg_warehouse = frappe.get_value("Manufacturing Settings", None, "default_fg_warehouse")
     
@@ -20,7 +21,7 @@ def add_shipping_cost(delivery_note_name: str):
                 "amount": doc.custom_shipping_cost
             })
 
-            if item.batch_no is None:
+            if item.batch_no is None or item.batch_no == "":
                 if item.serial_and_batch_bundle is None:
                     frappe.throw("Serial and Batch Bundle is required for item: {}".format(item.item_code))
                 batch_no = frappe.db.sql(f"SELECT batch_no FROM `tabSerial and Batch Entry` WHERE parent = '{item.serial_and_batch_bundle}'", as_dict=True)[0].batch_no
@@ -45,7 +46,8 @@ def add_shipping_cost(delivery_note_name: str):
                 "is_finished_item": 1,
             })
             stock_entry.insert()
-            stock_entry.submit()                        
+            stock_entry.submit()        
+
     else:
         frappe.throw("No shipping cost defined. Either select a Purchase Invoice or enter a custom shipping cost.")
 
