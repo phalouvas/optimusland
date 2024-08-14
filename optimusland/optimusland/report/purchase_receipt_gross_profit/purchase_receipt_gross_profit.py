@@ -222,6 +222,7 @@ class GrossProfitGenerator:
 				dn.name AS delivery_note,
 				dn.customer,
 				dni.item_code,
+				sbe.incoming_rate,
 				sbe.batch_no
 			FROM
 				`tabDelivery Note Item` dni
@@ -284,6 +285,7 @@ class GrossProfitGenerator:
 					sales_invoices_item["purchase_rate"] = delivery_note_item.purchase_rate
 					sales_invoices_item["purchase_amount"] = delivery_note_item.purchase_amount
 					sales_invoices_item["batch_no"] = delivery_note_item.batch_no
+					sales_invoices_item["incoming_rate"] = delivery_note_item.incoming_rate
 					incoming_profit_rate = sales_invoices_item.selling_rate - sales_invoices_item.incoming_rate
 					sales_invoices_item["incoming_profit_rate"] = round(incoming_profit_rate, 3)
 					sales_invoices_item["incoming_profit_percentage"] = round((incoming_profit_rate / sales_invoices_item.selling_rate) * 100)
