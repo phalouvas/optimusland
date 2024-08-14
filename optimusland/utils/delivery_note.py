@@ -18,7 +18,7 @@ def add_shipping_cost(delivery_note_name: str, custom_shipping_cost: float):
             stock_entry.append("additional_costs", {
                 "expense_account": expense_account,
                 "description": "Shipping",
-                "amount": doc.custom_shipping_cost
+                "amount": custom_shipping_cost
             })
 
             if item.batch_no is None or item.batch_no == "":
