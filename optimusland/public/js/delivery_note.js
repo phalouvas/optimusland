@@ -8,8 +8,7 @@ frappe.ui.form.on('Delivery Note', {
                     frappe.call({
                         method: "optimusland.utils.delivery_note.add_shipping_cost",
                         args: {
-                            delivery_note_name: frm.doc.name,
-                            custom_shipping_cost: frm.doc.custom_shipping_cost
+                            delivery_note_name: frm.doc.name
                         },
                         callback: function (response) {
                             if (response.message) {

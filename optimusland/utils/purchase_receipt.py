@@ -61,19 +61,19 @@ def create_production_plan(purchase_receipt, method=None):
                 batch_no = batch["batch_no"]
                 break
     
-        se = frappe.get_doc(make_stock_entry(wo.name, "Material Transfer for Manufacture", wo.qty))
-        se.insert()
-        se.submit()
+        se1 = frappe.get_doc(make_stock_entry(wo.name, "Material Transfer for Manufacture", wo.qty))
+        se1.insert()
+        se1.submit()
 
-        se = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
-        se = fix_stock_entry(se, batch_no, wo.production_item)
-        se.insert()
-        se.submit()
+        se2 = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
+        se2 = fix_stock_entry(se2, batch_no, wo.production_item)
+        se2.insert()
+        se2.submit()
         
     pass
 
 
-def fix_stock_entry(se: dict, batch_no: str, item_code: str):
+def fix_stock_entry(se: dict, batch_no: str, item_code: str, purchase_rate: float):
     
     source_item_exists = False
     for item in se.items:
