@@ -14,7 +14,7 @@ def create_production_plan(purchase_receipt, method=None):
         else:
             batch_no = item.batch_no
         if batch_no:
-            batch_nos.append({"item_code": item.item_code, "batch_no": batch_no})
+            batch_nos.append({"item_code": item.item_code, "batch_no": batch_no, "purchase_rate": item.rate})
 
     pln = frappe.get_doc(
 		{
@@ -59,6 +59,7 @@ def create_production_plan(purchase_receipt, method=None):
         for batch in batch_nos:
             if batch["item_code"] == wo.production_item:
                 batch_no = batch["batch_no"]
+                purchase_rate = batch["purchase_rate"]
                 break
     
         se1 = frappe.get_doc(make_stock_entry(wo.name, "Material Transfer for Manufacture", wo.qty))
@@ -66,7 +67,7 @@ def create_production_plan(purchase_receipt, method=None):
         se1.submit()
 
         se2 = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
-        se2 = fix_stock_entry(se2, batch_no, wo.production_item)
+        se2 = fix_stock_entry(se2, batch_no, wo.production_item, purchase_rate)
         se2.insert()
         se2.submit()
         
@@ -83,10 +84,12 @@ def fix_stock_entry(se: dict, batch_no: str, item_code: str, purchase_rate: floa
             source_item = {
                 "item_code": item.item_code,
                 "s_warehouse": item.t_warehouse,
+                "bom_no": item.bom_no,
                 "qty": item.qty,
                 "batch_no": item.batch_no,
                 "use_serial_batch_fields": 1,
                 "is_finished_item": 0,
+                "basic_rate": purchase_rate,
             }
             if item.is_finished_item == 0:
                 source_item_exists = True
@@ -95,5 +98,7 @@ def fix_stock_entry(se: dict, batch_no: str, item_code: str, purchase_rate: floa
         se.append(
             "items", source_item
         )
-    
+
+    se.items.reverse()
+            
     return se
