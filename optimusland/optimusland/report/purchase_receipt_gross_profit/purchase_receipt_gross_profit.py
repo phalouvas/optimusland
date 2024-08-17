@@ -73,6 +73,12 @@ def get_columns(filters):
 			"options": "Sales Invoice",
 		},
 		{
+			"label": _("Customer"),
+			"fieldtype": "Link",
+			"fieldname": "customer",
+			"options": "Customer",
+		},
+		{
 			"label": _("Delivery Note"),
 			"fieldtype": "Link",
 			"fieldname": "delivery_note",
