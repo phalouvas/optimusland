@@ -135,13 +135,13 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
+scheduler_events = {
 # 	"all": [
 # 		"optimusland.tasks.all"
 # 	],
-# 	"daily": [
-# 		"optimusland.tasks.daily"
-# 	],
+ 	"daily": [
+ 		"optimusland.tasks.daily"
+ 	],
 # 	"hourly": [
 # 		"optimusland.tasks.hourly"
 # 	],
@@ -151,7 +151,7 @@ doc_events = {
 # 	"monthly": [
 # 		"optimusland.tasks.monthly"
 # 	],
-# }
+}
 
 # Testing
 # -------
