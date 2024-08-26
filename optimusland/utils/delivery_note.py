@@ -1,4 +1,5 @@
 import frappe
+import datetime
 
 @frappe.whitelist()
 #def add_shipping_cost(doc, method=None):
@@ -21,6 +22,9 @@ def add_shipping_cost(delivery_note_name: str):
             stock_entry = frappe.new_doc("Stock Entry")
             stock_entry.stock_entry_type = "Repack"
             stock_entry.to_warehouse = default_fg_warehouse
+            stock_entry.posting_date = doc.posting_date
+            stock_entry.posting_time = doc.posting_time
+            stock_entry.set_posting_time = doc.set_posting_time
             stock_entry.append("additional_costs", {
                 "expense_account": expense_account,
                 "description": "Shipping",
@@ -58,6 +62,7 @@ def add_shipping_cost(delivery_note_name: str):
         frappe.throw("No shipping cost defined. Either select a Purchase Invoice or enter a custom shipping cost.")
 
     doc.custom_is_shipping_cost_added = 1
+    doc.posting_time = doc.posting_time + datetime.timedelta(seconds=1)
     doc.save()
     
     return True
