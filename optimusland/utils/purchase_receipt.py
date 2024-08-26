@@ -19,7 +19,7 @@ def create_production_plan(purchase_receipt, method=None):
     pln = frappe.get_doc(
 		{
 			"doctype": "Production Plan",
-			"posting_date": nowdate(),
+			"posting_date": purchase_receipt.posting_date,
 		}
 	)
     
@@ -35,7 +35,7 @@ def create_production_plan(purchase_receipt, method=None):
 				"item_code": purchase_receipt_item.item_code,
 				"bom_no": purchase_receipt_item.bom_no,
 				"planned_qty": purchase_receipt_item.qty,
-				"planned_start_date": now_datetime(),
+				"planned_start_date": purchase_receipt.posting_date,
 				"stock_uom": purchase_receipt_item.uom,
 				"warehouse": purchase_receipt_item.warehouse,
 			},
@@ -63,11 +63,15 @@ def create_production_plan(purchase_receipt, method=None):
                 break
     
         se1 = frappe.get_doc(make_stock_entry(wo.name, "Material Transfer for Manufacture", wo.qty))
+        se1.set_posting_time = purchase_receipt.set_posting_time
+        se1.posting_date = purchase_receipt.posting_date
         se1.insert()
         se1.submit()
 
         se2 = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
         se2 = fix_stock_entry(se2, batch_no, wo.production_item, purchase_rate)
+        se2.set_posting_time = purchase_receipt.set_posting_time
+        se2.posting_date = purchase_receipt.posting_date
         se2.insert()
         se2.submit()
         
