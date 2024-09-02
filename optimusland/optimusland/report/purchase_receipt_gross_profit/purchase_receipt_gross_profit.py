@@ -85,27 +85,11 @@ def get_columns(filters):
 			"options": "Delivery Note",
 		},
 		{
-			"label": _("Purchase Qty"),
-			"fieldtype": "Integer",
-			"fieldname": "purchase_qty",
-		},
-		{
 			"label": _("Purchase Rate"),
 			"fieldtype": "Currency",
 			"fieldname": "purchase_rate",
 			"options": "currency",
-		},
-		{
-			"label": _("Purchase Amount"),
-			"fieldtype": "Currency",
-			"fieldname": "purchase_amount",
-			"options": "currency",
-		},
-		{
-			"label": _("Selling Qty"),
-			"fieldtype": "Integer",
-			"fieldname": "selling_qty",
-		},
+		},		
 		{
 			"label": _("Selling Rate"),
 			"fieldtype": "Currency",
@@ -117,6 +101,11 @@ def get_columns(filters):
 			"fieldtype": "Currency",
 			"fieldname": "incoming_rate",
 			"options": "currency",
+		},
+		{
+			"label": _("Selling Qty"),
+			"fieldtype": "Integer",
+			"fieldname": "selling_qty",
 		},
 		{
 			"label": _("Selling Amount"),
