@@ -24,22 +24,24 @@ def create_production_plan(purchase_receipt, method=None):
 	)
     
     for purchase_receipt_item in purchase_receipt.items:
-        try:
-            item_details = get_item_details(purchase_receipt_item.item_code)
-        except Exception:
-            continue
-        purchase_receipt_item.bom_no = item_details.bom_no
-        pln.append(
-			"po_items",
-			{
-				"item_code": purchase_receipt_item.item_code,
-				"bom_no": purchase_receipt_item.bom_no,
-				"planned_qty": purchase_receipt_item.qty,
-				"planned_start_date": purchase_receipt.posting_date,
-				"stock_uom": purchase_receipt_item.uom,
-				"warehouse": purchase_receipt_item.warehouse,
-			},
-		)
+        has_batch_no = frappe.db.get_value("Item", purchase_receipt_item.item_code, "has_batch_no")
+        if has_batch_no:
+            try:
+                item_details = get_item_details(purchase_receipt_item.item_code)
+            except Exception:
+                continue
+            purchase_receipt_item.bom_no = item_details.bom_no
+            pln.append(
+                "po_items",
+                {
+                    "item_code": purchase_receipt_item.item_code,
+                    "bom_no": purchase_receipt_item.bom_no,
+                    "planned_qty": purchase_receipt_item.qty,
+                    "planned_start_date": purchase_receipt.posting_date,
+                    "stock_uom": purchase_receipt_item.uom,
+                    "warehouse": purchase_receipt_item.warehouse,
+                },
+            )
 
     if not pln.po_items:
         return
