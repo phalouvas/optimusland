@@ -2,9 +2,16 @@ import frappe
 import datetime
 
 @frappe.whitelist()
-#def add_shipping_cost(doc, method=None):
-def add_shipping_cost(delivery_note_name: str):
+def add_shipping_cost(delivery_note_name: str, purchase_invoice: str, shipping_cost: float):
     doc = frappe.get_doc("Delivery Note", delivery_note_name)
+    
+    # Update the shipping cost field if provided
+    if shipping_cost:
+        doc.custom_shipping_cost = float(shipping_cost)
+    
+    # Update the purchase invoice field if provided
+    if purchase_invoice:
+        doc.custom_shipping_purchase_invoice = purchase_invoice
         
     if doc.custom_shipping_cost:
         
