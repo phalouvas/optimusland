@@ -7,12 +7,20 @@ frappe.ui.form.on('Delivery Note', {
                     title: __('Add Shipping Cost'),
                     fields: [
                         {
+                            label: __('Custom Shipping Cost'),
+                            fieldname: 'shipping_cost',
+                            fieldtype: 'Currency',
+                            description: __('Enter a custom shipping cost amount (must be greater than zero)'),
+                            reqd: 1,
+                            min: 0.01
+                        },
+                        {
                             label: __('Purchase Invoice'),
                             fieldname: 'purchase_invoice',
                             fieldtype: 'Link',
                             options: 'Purchase Invoice',
                             description: __('Select an existing Purchase Invoice for shipping costs'),
-                            reqd: 1, // Make field mandatory
+                            reqd: 0,
                             onchange: function() {
                                 // Get the selected Purchase Invoice
                                 const purchase_invoice = d.get_value('purchase_invoice');
@@ -28,15 +36,7 @@ frappe.ui.form.on('Delivery Note', {
                                         });
                                 }
                             }
-                        },
-                        {
-                            label: __('Custom Shipping Cost'),
-                            fieldname: 'shipping_cost',
-                            fieldtype: 'Currency',
-                            description: __('Enter a custom shipping cost amount (must be greater than zero)'),
-                            reqd: 1, // Make field mandatory
-                            min: 0.01 // Ensure value is greater than zero
-                        }
+                        }                        
                     ],
                     primary_action_label: __('Apply'),
                     primary_action: function(values) {
@@ -58,8 +58,8 @@ frappe.ui.form.on('Delivery Note', {
                                     method: "optimusland.utils.delivery_note.add_shipping_cost",
                                     args: {
                                         delivery_note_name: frm.doc.name,
-                                        purchase_invoice: values.purchase_invoice,
-                                        shipping_cost: values.shipping_cost
+                                        shipping_cost: values.shipping_cost,
+                                        purchase_invoice: values.purchase_invoice
                                     },
                                     callback: function (response) {
                                         if (response.message) {
