@@ -12,6 +12,7 @@ frappe.ui.form.on('Delivery Note', {
                             fieldtype: 'Link',
                             options: 'Purchase Invoice',
                             description: __('Select an existing Purchase Invoice for shipping costs'),
+                            reqd: 1, // Make field mandatory
                             onchange: function() {
                                 // Get the selected Purchase Invoice
                                 const purchase_invoice = d.get_value('purchase_invoice');
@@ -32,11 +33,19 @@ frappe.ui.form.on('Delivery Note', {
                             label: __('Custom Shipping Cost'),
                             fieldname: 'shipping_cost',
                             fieldtype: 'Currency',
-                            description: __('Enter a custom shipping cost amount')
+                            description: __('Enter a custom shipping cost amount (must be greater than zero)'),
+                            reqd: 1, // Make field mandatory
+                            min: 0.01 // Ensure value is greater than zero
                         }
                     ],
                     primary_action_label: __('Apply'),
                     primary_action: function(values) {
+                        // Validate shipping cost is greater than zero
+                        if (values.shipping_cost <= 0) {
+                            frappe.throw(__('Shipping Cost must be greater than zero'));
+                            return;
+                        }
+                        
                         // Close the dialog
                         d.hide();
                         
