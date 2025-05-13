@@ -2,9 +2,16 @@ import frappe
 import datetime
 
 @frappe.whitelist()
-#def add_shipping_cost(doc, method=None):
-def add_shipping_cost(delivery_note_name: str):
+def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_invoice: str = None):
     doc = frappe.get_doc("Delivery Note", delivery_note_name)
+    
+    # Update the shipping cost field if provided
+    if shipping_cost:
+        doc.custom_shipping_cost = float(shipping_cost)
+    
+    # Update the purchase invoice field if provided
+    if purchase_invoice:
+        doc.custom_shipping_purchase_invoice = purchase_invoice
         
     if doc.custom_shipping_cost:
         
@@ -14,7 +21,7 @@ def add_shipping_cost(delivery_note_name: str):
 
         total_qty = sum(item.qty for item in doc.items)
         shipping_cost_per_qty = doc.custom_shipping_cost / total_qty
-        
+
         for item in doc.items:
             if item.qty == 0:
                 continue
@@ -23,8 +30,8 @@ def add_shipping_cost(delivery_note_name: str):
             stock_entry.stock_entry_type = "Repack"
             stock_entry.to_warehouse = default_fg_warehouse
             stock_entry.posting_date = doc.posting_date
-            stock_entry.posting_time = doc.posting_time
-            stock_entry.set_posting_time = doc.set_posting_time
+            stock_entry.posting_time = doc.posting_time - datetime.timedelta(seconds=1)
+            stock_entry.set_posting_time = 1
             stock_entry.append("additional_costs", {
                 "expense_account": expense_account,
                 "description": "Shipping",
@@ -61,8 +68,12 @@ def add_shipping_cost(delivery_note_name: str):
     else:
         frappe.throw("No shipping cost defined. Either select a Purchase Invoice or enter a custom shipping cost.")
 
-    doc.custom_is_shipping_cost_added = 1
-    doc.posting_time = doc.posting_time + datetime.timedelta(seconds=1)
-    doc.save()
+    frappe.db.set_value("Delivery Note", delivery_note_name, {
+        "custom_shipping_cost": float(shipping_cost),
+        "custom_shipping_purchase_invoice": purchase_invoice if purchase_invoice else None,
+        "custom_is_shipping_cost_added": 1
+    }, update_modified=False)
+    
+    frappe.db.commit()
     
     return True

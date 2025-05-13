@@ -65,15 +65,17 @@ def create_production_plan(purchase_receipt, method=None):
                 break
     
         se1 = frappe.get_doc(make_stock_entry(wo.name, "Material Transfer for Manufacture", wo.qty))
-        se1.set_posting_time = purchase_receipt.set_posting_time
+        se1.set_posting_time = 1
         se1.posting_date = purchase_receipt.posting_date
+        se1.posting_time = purchase_receipt.posting_time
         se1.insert()
         se1.submit()
 
         se2 = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
         se2 = fix_stock_entry(se2, batch_no, wo.production_item, purchase_rate)
-        se2.set_posting_time = purchase_receipt.set_posting_time
+        se2.set_posting_time = 1
         se2.posting_date = purchase_receipt.posting_date
+        se2.posting_time = purchase_receipt.posting_time
         se2.insert()
         se2.submit()
         
