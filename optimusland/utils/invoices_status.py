@@ -82,3 +82,41 @@ def fix_unpaid_overdue_sales_invoices_status():
                 frappe.db.set_value("Sales Invoice", invoice.get("name"), "status", "Paid")
     
     return True
+
+def fix_to_bill_delivery_note_status():
+    today = frappe.utils.nowdate()
+    thirty_days_ago = frappe.utils.add_days(today, -30)
+    
+    # Find delivery notes that are:
+    # 1. Older than 30 days
+    # 2. Have "To Bill" status
+    # 3. Are submitted (docstatus=1)
+    filters = {
+        "status": "To Bill",
+        "posting_date": ["<", thirty_days_ago],
+        "docstatus": 1
+    }
+    
+    delivery_notes = frappe.get_all("Delivery Note", filters=filters, fields=["name"])
+    
+    count = 0
+    for dn in delivery_notes:
+        dn_name = dn.get("name")
+        
+        # Check if there are linked sales invoices that are submitted
+        linked_invoices = frappe.get_all(
+            "Sales Invoice Item",
+            filters={
+                "delivery_note": dn_name,
+                "docstatus": 1
+            },
+            fields=["parent"],
+            distinct=True
+        )
+        
+        if linked_invoices:
+            # Update status to "Completed" as there are submitted sales invoices
+            frappe.db.set_value("Delivery Note", dn_name, "status", "Completed")
+            count += 1
+    
+    return f"Updated {count} delivery notes from 'To Bill' to 'Completed' status"
