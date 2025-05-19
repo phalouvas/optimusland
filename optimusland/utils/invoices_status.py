@@ -83,40 +83,99 @@ def fix_unpaid_overdue_sales_invoices_status():
     
     return True
 
-def fix_to_bill_delivery_note_status():
-    today = frappe.utils.nowdate()
-    thirty_days_ago = frappe.utils.add_days(today, -30)
+@frappe.whitelist()
+def match_all_delivery_notes_to_invoices():
+    delivery_note_items = frappe.db.sql("""
+        SELECT dni.*, dn.customer
+        FROM `tabDelivery Note Item` dni
+        INNER JOIN `tabDelivery Note` dn ON dni.parent = dn.name
+        WHERE dn.docstatus = 1
+        AND dn.status = 'To Bill'
+    """, as_dict=1)
     
-    # Find delivery notes that are:
-    # 1. Older than 30 days
-    # 2. Have "To Bill" status
-    # 3. Are submitted (docstatus=1)
-    filters = {
-        "status": "To Bill",
-        "posting_date": ["<", thirty_days_ago],
-        "docstatus": 1
-    }
-    
-    delivery_notes = frappe.get_all("Delivery Note", filters=filters, fields=["name"])
-    
-    count = 0
-    for dn in delivery_notes:
-        dn_name = dn.get("name")
-        
-        # Check if there are linked sales invoices that are submitted
-        linked_invoices = frappe.get_all(
-            "Sales Invoice Item",
-            filters={
-                "delivery_note": dn_name,
-                "docstatus": 1
-            },
-            fields=["parent"],
-            distinct=True
+    sales_invoice_items = frappe.db.sql("""
+            SELECT sii.*, si.customer
+            FROM `tabSales Invoice Item` sii
+            INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
+            LEFT JOIN `tabSales Invoice` cn ON cn.return_against = si.name AND cn.docstatus = 1
+            WHERE si.docstatus = 1
+            AND (sii.delivery_note IS NULL OR sii.delivery_note = '')
+            AND cn.name IS NULL
+        """, as_dict=1)
+
+    for delivery_note_item in delivery_note_items:
+
+        if delivery_note_item.get("parent") == "MAT-DN-2025-00355":
+            pass
+        matching_invoice_items = [
+            sii for sii in sales_invoice_items
+            if sii.get("item_code") == delivery_note_item.get("item_code")
+            and sii.get("customer") == delivery_note_item.get("customer")
+        ]
+        for invoice_item in matching_invoice_items:
+            
+            si_amount = invoice_item.get("amount")
+            dn_amount = delivery_note_item.get("amount")
+            dn_billed_amt = delivery_note_item.get("billed_amt")
+            
+            # Update the Delivery Note Item with the billed amount
+            billed_amt = si_amount + dn_billed_amt
+            if billed_amt > dn_amount:
+                billed_amt = dn_amount
+            frappe.db.set_value(
+                "Delivery Note Item",
+                delivery_note_item.get("name"),
+                "billed_amt",
+                billed_amt
+            )
+            delivery_note_item["billed_amt"] = billed_amt
+            
+            # Update the Sales Invoice Item with the Delivery Note
+            if si_amount <= dn_amount - dn_billed_amt:
+                frappe.db.set_value(
+                    "Sales Invoice Item",
+                    invoice_item.get("name"),
+                    "delivery_note",
+                    delivery_note_item.get("parent")
+                )
+                frappe.db.set_value(
+                    "Sales Invoice Item",
+                    invoice_item.get("name"),
+                    "dn_detail",
+                    delivery_note_item.get("name")
+                )
+                frappe.db.set_value(
+                    "Sales Invoice Item",
+                    invoice_item.get("name"),
+                    "delivered_qty",
+                    invoice_item.get("qty")
+                )
+                sales_invoice_items.remove(invoice_item)
+          
+    # Group the delivery note items by their parent delivery note
+    delivery_note_items_by_parent = {}
+    for item in delivery_note_items:
+        parent = item.get("parent")
+        if parent not in delivery_note_items_by_parent:
+            delivery_note_items_by_parent[parent] = []
+        delivery_note_items_by_parent[parent].append(item)
+
+    for delivery_note, items in delivery_note_items_by_parent.items():
+        # Calculate the total billed amount for each delivery note
+        total_billed_amount = sum(item.get("billed_amt") for item in items)
+        # Find the percentage of billed amount
+        total_amount = sum(item.get("amount") for item in items)
+        percentage_billed = (total_billed_amount / total_amount) * 100 if total_amount > 0 else 0
+        if percentage_billed > 100:
+            percentage_billed = 100
+        # Update the delivery note with the percentage billed
+        frappe.db.set_value(
+            "Delivery Note",
+            delivery_note,
+            "per_billed",
+            percentage_billed
         )
-        
-        if linked_invoices:
-            # Update status to "Completed" as there are submitted sales invoices
-            frappe.db.set_value("Delivery Note", dn_name, "status", "Completed")
-            count += 1
+        if percentage_billed == 100:
+            frappe.db.set_value("Delivery Note", delivery_note, "status", "Completed")
     
-    return f"Updated {count} delivery notes from 'To Bill' to 'Completed' status"
+    return f"Delivery Note status updated successfully."
