@@ -9,7 +9,13 @@
   "from_invoice_date",
   "column_break_tmbj",
   "customer",
-  "to_invoice_date"
+  "to_invoice_date",
+  "unreconciled_entries_section",
+  "delivery_note_item",
+  "column_break_fvug",
+  "sales_invoice_item",
+  "allocated_entries_section",
+  "allocation"
  ],
  "fields": [
   {
@@ -41,13 +47,47 @@
    "fieldname": "to_invoice_date",
    "fieldtype": "Date",
    "label": "To Invoice Date"
+  },
+  {
+   "fieldname": "unreconciled_entries_section",
+   "fieldtype": "Section Break",
+   "label": "Unreconciled Entries"
+  },
+  {
+   "fieldname": "delivery_note_item",
+   "fieldtype": "Table",
+   "label": "Delivery Note Item",
+   "options": "Delivery Note Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_fvug",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sales_invoice_item",
+   "fieldtype": "Table",
+   "label": "Sales Invoice Item",
+   "options": "Sales Invoice Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "allocated_entries_section",
+   "fieldtype": "Section Break",
+   "label": "Allocated Entries"
+  },
+  {
+   "fieldname": "allocation",
+   "fieldtype": "Table",
+   "label": "Allocation",
+   "options": "Delivery Note Reconciliation Allocation"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-19 09:54:43.601252",
+ "modified": "2025-05-19 10:06:34.585303",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Delivery Note Reconciliation",
