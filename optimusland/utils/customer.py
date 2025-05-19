@@ -14,6 +14,7 @@ def match_all_delivery_notes_to_invoices(customer_name: str):
         WHERE dn.customer = %s 
         AND dn.docstatus = 1
         AND dn.status <> 'Closed'
+        ORDER BY dn.posting_date
     """, customer_name, as_dict=1)
 
     sales_invoice_items = frappe.db.sql("""
@@ -24,6 +25,7 @@ def match_all_delivery_notes_to_invoices(customer_name: str):
         WHERE si.customer = %s 
         AND si.docstatus = 1
         AND cn.name IS NULL
+        ORDER BY si.posting_date
     """, customer_name, as_dict=1)
 
     for delivery_note_item in delivery_note_items:

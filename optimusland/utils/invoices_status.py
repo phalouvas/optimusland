@@ -91,17 +91,19 @@ def fix_to_bill_delivery_note_status():
         INNER JOIN `tabDelivery Note` dn ON dni.parent = dn.name
         WHERE dn.docstatus = 1
         AND dn.status = 'To Bill'
+        ORDER BY dn.posting_date
     """, as_dict=1)
     
     sales_invoice_items = frappe.db.sql("""
-            SELECT sii.*, si.customer
-            FROM `tabSales Invoice Item` sii
-            INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
-            LEFT JOIN `tabSales Invoice` cn ON cn.return_against = si.name AND cn.docstatus = 1
-            WHERE si.docstatus = 1
-            AND (sii.delivery_note IS NULL OR sii.delivery_note = '')
-            AND cn.name IS NULL
-        """, as_dict=1)
+        SELECT sii.*, si.customer
+        FROM `tabSales Invoice Item` sii
+        INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
+        LEFT JOIN `tabSales Invoice` cn ON cn.return_against = si.name AND cn.docstatus = 1
+        WHERE si.docstatus = 1
+        AND (sii.delivery_note IS NULL OR sii.delivery_note = '')
+        AND cn.name IS NULL
+        ORDER BY si.posting_date
+    """, as_dict=1)
 
     for delivery_note_item in delivery_note_items:
 
