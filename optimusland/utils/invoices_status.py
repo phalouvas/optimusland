@@ -84,7 +84,7 @@ def fix_unpaid_overdue_sales_invoices_status():
     return True
 
 @frappe.whitelist()
-def match_all_delivery_notes_to_invoices():
+def fix_to_bill_delivery_note_status():
     delivery_note_items = frappe.db.sql("""
         SELECT dni.*, dn.customer
         FROM `tabDelivery Note Item` dni
