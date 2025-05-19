@@ -4,6 +4,9 @@ from collections import defaultdict
 
 @frappe.whitelist()
 def match_all_delivery_notes_to_invoices(customer_name: str):
+
+    close_all_zero_delivery_notes(customer_name)
+
     delivery_note_items = frappe.db.sql("""
         SELECT dni.*, dn.customer
         FROM `tabDelivery Note Item` dni
@@ -101,3 +104,27 @@ def match_all_delivery_notes_to_invoices(customer_name: str):
             frappe.db.set_value("Delivery Note", delivery_note, "status", "To Bill")
     
     return f"Delivery Note status updated successfully."
+
+def close_all_zero_delivery_notes(customer_name: str):
+    delivery_note_items = frappe.db.sql("""
+        SELECT dni.*, dn.customer
+        FROM `tabDelivery Note Item` dni
+        INNER JOIN `tabDelivery Note` dn ON dni.parent = dn.name
+        WHERE dn.customer = %s 
+        AND dn.docstatus = 1
+        AND dn.status <> 'Closed'
+        AND dn.total = 0
+    """, customer_name, as_dict=1)
+
+    for delivery_note_item in delivery_note_items:
+        if delivery_note_item.get("billed_amt") == 0:
+            frappe.db.set_value(
+                "Delivery Note",
+                delivery_note_item.get("parent"),
+                "status",
+                "Closed"
+            )
+
+    frappe.db.commit()
+    
+    return f"Closed all zero Delivery Notes for customer {customer_name}."
