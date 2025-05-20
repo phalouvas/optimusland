@@ -132,6 +132,9 @@ doc_events = {
     "Purchase Receipt": {
         "on_submit": "optimusland.utils.purchase_receipt.create_production_plan"
     },
+    "Sales Invoice": {
+        "validate": "optimusland.utils.sales_invoice.get_delivery_note_items"
+    },
 }
 
 # Scheduled Tasks
