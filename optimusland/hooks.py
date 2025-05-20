@@ -135,6 +135,9 @@ doc_events = {
     "Sales Invoice": {
         "validate": "optimusland.utils.sales_invoice.get_delivery_note_items"
     },
+    "Purchase Invoice": {
+        "validate": "optimusland.utils.purchase_invoice.get_purchase_receipt_items"
+    },
 }
 
 # Scheduled Tasks
