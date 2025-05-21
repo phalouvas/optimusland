@@ -12,6 +12,26 @@ frappe.listview_settings['Batch'].onload = function(listview) {
                 return;
             }
 
+            // Check if all selected batches have the same supplier
+            let suppliers = new Set();
+            selected_docs.forEach(doc => {
+                if (doc.custom_supplier_optimus) {
+                    suppliers.add(doc.custom_supplier_optimus);
+                } else {
+                    suppliers.add('null'); // Track batches with no supplier
+                }
+            });
+
+            if (suppliers.size > 1) {
+                frappe.throw(__("All selected batches must have the same supplier"));
+                return;
+            }
+
+            if (suppliers.has('null')) {
+                frappe.throw(__("All selected batches must have a supplier"));
+                return;
+            }
+
             frappe.call({
                 method: "optimusland.utils.batch.create_purchase_receipt",
                 args: {
@@ -38,3 +58,11 @@ frappe.listview_settings['Batch'].onload = function(listview) {
         });
     }
 };
+
+// Make sure the custom_supplier_optimus field is fetched for validation
+if (!frappe.listview_settings['Batch'].add_fields) {
+    frappe.listview_settings['Batch'].add_fields = [];
+}
+if (!frappe.listview_settings['Batch'].add_fields.includes("custom_supplier_optimus")) {
+    frappe.listview_settings['Batch'].add_fields.push("custom_supplier_optimus");
+}
