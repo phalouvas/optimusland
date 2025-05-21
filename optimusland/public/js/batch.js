@@ -29,15 +29,8 @@ function update_batch_id(frm) {
         return;
     }
     
-    // Format the date as dd/mm
-    let date_obj = frappe.datetime.str_to_obj(frm.doc.manufacturing_date);
-    let formatted_date = "";
-    
-    if(date_obj) {
-        let day = date_obj.getDate().toString().padStart(2, '0');
-        let month = (date_obj.getMonth() + 1).toString().padStart(2, '0');
-        formatted_date = `${day}/${month}`;
-    }
+    // Use frappe's built-in date formatting
+    let formatted_date = frappe.datetime.str_to_user(frm.doc.manufacturing_date);
     
     // Get the item code
     frappe.db.get_value("Item", frm.doc.item, "item_code", (item_data) => {
@@ -48,7 +41,7 @@ function update_batch_id(frm) {
             if(!supplier_data || !supplier_data.supplier_name) return;
             
             // Set the batch_id field
-            let batch_id = `${item_data.item_code} - LOT:${formatted_date} - ${supplier_data.supplier_name}`;
+            let batch_id = `${item_data.item_code} * LOT:${formatted_date} * ${supplier_data.supplier_name}`;
             frm.set_value("batch_id", batch_id);
         });
     });
