@@ -81,7 +81,6 @@ def create_production_plan(purchase_receipt, method=None):
         
     pass
 
-
 def fix_stock_entry(se: dict, batch_no: str, item_code: str, purchase_rate: float):
     
     source_item_exists = False
@@ -110,3 +109,59 @@ def fix_stock_entry(se: dict, batch_no: str, item_code: str, purchase_rate: floa
     se.items.reverse()
             
     return se
+
+def set_batch_no(purchase_receipt, method=None):
+    
+    # Get items with empty batch_no
+    items_without_batch = []
+    for item in purchase_receipt.items:
+        if not item.batch_no:
+            items_without_batch.append(item)
+    
+    # Filter for items that should have batch numbers (has_batch_no=1)
+    batch_required_items = []
+    for item in items_without_batch:
+        has_batch_no = frappe.db.get_value("Item", item.item_code, "has_batch_no")
+        if has_batch_no == 1:
+            batch_required_items.append(item)
+    
+    # Loop through items that require batch numbers
+    for item in batch_required_items:
+        
+        # Search for existing batches that match our criteria
+        batches = frappe.get_all(
+            "Batch",
+            filters={
+                "item": item.item_code,
+                "custom_supplier_optimus": purchase_receipt.supplier,
+                "manufacturing_date": purchase_receipt.posting_date,
+                "custom_prefix": item.custom_batch_prefix,
+            },
+            fields=["name", "batch_id"]
+        )
+
+        date_format = frappe.utils.get_user_date_format()
+        manufactured_date = frappe.utils.formatdate(purchase_receipt.posting_date, date_format)
+
+        if batches:
+            # Use the first matching batch
+            batch_no = batches[0].name
+            # Assign the batch number to the item
+            item.batch_no = batch_no
+        else:
+            # Create a new batch if none exists
+            new_batch = frappe.new_doc("Batch")
+            if item.custom_batch_prefix:
+                new_batch.batch_id = item.item_code + " * " + item.custom_batch_prefix + " * " + manufactured_date + " * " + purchase_receipt.supplier
+            else:
+                new_batch.batch_id = item.item_code + " * " + manufactured_date + " * " + purchase_receipt.supplier
+            new_batch.item = item.item_code
+            new_batch.manufacturing_date = purchase_receipt.posting_date
+            new_batch.custom_supplier_optimus = purchase_receipt.supplier
+            new_batch.custom_prefix = item.custom_batch_prefix
+            new_batch.insert()
+            
+            # Assign the new batch to the item
+            item.batch_no = new_batch.name
+    
+    frappe.db.commit()
