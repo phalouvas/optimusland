@@ -34,8 +34,9 @@ doctype_js = {
     "Customer" : "public/js/customer.js",
     "Delivery Note" : "public/js/delivery_note.js",
     "Sales Invoice" : "public/js/sales_invoice.js",
+    "Batch" : "public/js/batch.js"
 }
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+doctype_list_js = {"Batch" : "public/js/batch_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -130,7 +131,8 @@ doctype_js = {
 
 doc_events = {
     "Purchase Receipt": {
-        "on_submit": "optimusland.utils.purchase_receipt.create_production_plan"
+        "on_submit": "optimusland.utils.purchase_receipt.create_production_plan",
+        "validate": "optimusland.utils.purchase_receipt.set_batch_no",
     },
     "Sales Invoice": {
         "validate": "optimusland.utils.sales_invoice.get_delivery_note_items"
