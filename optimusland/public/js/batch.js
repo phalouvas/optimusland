@@ -21,6 +21,12 @@ frappe.ui.form.on("Batch", {
         if(frm.doc.__islocal) {
             update_batch_id(frm);
         }
+    },
+
+    custom_prefix: function(frm) {
+        if(frm.doc.__islocal) {
+            update_batch_id(frm);
+        }
     }
 });
 
@@ -31,18 +37,10 @@ function update_batch_id(frm) {
     
     // Use frappe's built-in date formatting
     let formatted_date = frappe.datetime.str_to_user(frm.doc.manufacturing_date);
+
+    prefix = frm.doc.custom_prefix ? " * " + frm.doc.custom_prefix : " ";
+
+    let batch_id = `${frm.doc.item}${prefix}* ${formatted_date} * ${frm.doc.custom_supplier_optimus}`;
+    frm.set_value("batch_id", batch_id);
     
-    // Get the item code
-    frappe.db.get_value("Item", frm.doc.item, "item_code", (item_data) => {
-        if(!item_data || !item_data.item_code) return;
-        
-        // Get the supplier name
-        frappe.db.get_value("Supplier", frm.doc.custom_supplier_optimus, "supplier_name", (supplier_data) => {
-            if(!supplier_data || !supplier_data.supplier_name) return;
-            
-            // Set the batch_id field
-            let batch_id = `${item_data.item_code} * LOT:${formatted_date} * ${supplier_data.supplier_name}`;
-            frm.set_value("batch_id", batch_id);
-        });
-    });
 }
