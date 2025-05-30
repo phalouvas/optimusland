@@ -3,11 +3,16 @@ frappe.ui.form.on("Purchase Invoice", {
 	refresh: function(frm) {        
 		// Only if a new Purchase Invoice is being created
         if (frm.doc.__islocal) {
-            frappe.msgprint("<p>This is a <b>Purchase Invoice</b>.</p><p>Rememeber to choose the correct Naming Series.</p>");            
+            frappe.msgprint("<p>This is a <b>Purchase Invoice</b>.</p><p>Rememeber to choose the correct <b>Naming Series<b>.</p>");            
 
             // Get emement with id "page-Purchase Invoice" and add a class to it
             var page = document.getElementById("page-Purchase Invoice");
             page.classList.add("bg-warning");
+        } else {
+            var page = document.getElementById("page-Purchase Invoice");
+            if (page) {
+                page.classList.remove("bg-warning");
+            }
         }
 
         if (!frm.doc.__islocal && frm.doc.docstatus === 1 && frm.doc.status === 'Overdue') {
