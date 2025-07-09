@@ -249,6 +249,11 @@ class GrossProfitGenerator:
 					delivery_note_item["purchase_rate"] = purchase_receipt_item.purchase_rate
 					delivery_note_item["purchase_amount"] = purchase_receipt_item.purchase_amount
 
+		# Add customer filter to sales_invoices_items query
+		customer_condition = ""
+		if self.filters.customer:
+			customer_condition = "AND si.customer = %(customer)s"
+
 		sales_invoices_items = frappe.db.sql(
 			"""
 			SELECT
@@ -268,7 +273,11 @@ class GrossProfitGenerator:
 				si.docstatus = 1
 				AND si.company = %(company)s
 				AND sii.delivery_note IN ({delivery_notes_names})
-			""".format(delivery_notes_names=delivery_notes_names),
+				{customer_condition}
+			""".format(
+				delivery_notes_names=delivery_notes_names,
+				customer_condition=customer_condition
+			),
 			self.filters,
 			as_dict=1
 		)
