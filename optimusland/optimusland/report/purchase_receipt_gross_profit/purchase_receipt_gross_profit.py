@@ -282,30 +282,37 @@ class GrossProfitGenerator:
 			as_dict=1
 		)
 
-		for sales_invoices_item in sales_invoices_items:
-			for delivery_note_item in delivery_notes_items:
-				if sales_invoices_item.delivery_note == delivery_note_item.delivery_note and sales_invoices_item.item_code == delivery_note_item.item_code:
-					sales_invoices_item["purchase_receipt"] = delivery_note_item.purchase_receipt
-					sales_invoices_item["status"] = delivery_note_item.status
-					sales_invoices_item["posting_date"] = delivery_note_item.posting_date
-					sales_invoices_item["supplier"] = delivery_note_item.supplier
-					sales_invoices_item["purchase_qty"] = delivery_note_item.purchase_qty
-					sales_invoices_item["purchase_rate"] = delivery_note_item.purchase_rate
-					sales_invoices_item["purchase_amount"] = delivery_note_item.purchase_amount
-					sales_invoices_item["batch_no"] = delivery_note_item.batch_no
-					sales_invoices_item["incoming_rate"] = delivery_note_item.incoming_rate
-					incoming_profit_rate = sales_invoices_item.selling_rate - sales_invoices_item.incoming_rate
-					sales_invoices_item["incoming_profit_rate"] = round(incoming_profit_rate, 3)
-					sales_invoices_item["incoming_profit_percentage"] = round((incoming_profit_rate / sales_invoices_item.selling_rate) * 100)
-					sales_invoices_item["incoming_profit_amount"] = round(sales_invoices_item.selling_qty * incoming_profit_rate, 3)
-					wished_profit_rate = ( self.filters.wished_earning_percentage / 100 ) * sales_invoices_item.selling_rate
-					sales_invoices_item["wished_profit_rate"] = round(wished_profit_rate, 3)
-					sales_invoices_item["wished_profit_amount"] = round(sales_invoices_item.selling_qty * wished_profit_rate, 3)
-					supplier_rate = sales_invoices_item.selling_rate + sales_invoices_item.purchase_rate - sales_invoices_item.incoming_rate - wished_profit_rate
-					sales_invoices_item["supplier_rate"] = round(supplier_rate, 3)
-					sales_invoices_item["supplier_amount"] = round(sales_invoices_item.selling_qty * supplier_rate, 3)
+		# Build a lookup for delivery_note + item_code
+		delivery_note_lookup = {
+			(item.delivery_note, item.item_code): item
+			for item in delivery_notes_items
+		}
 
-		sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
+		for sales_invoices_item in sales_invoices_items:
+			key = (sales_invoices_item.delivery_note, sales_invoices_item.item_code)
+			delivery_note_item = delivery_note_lookup.get(key)
+			if delivery_note_item:
+				sales_invoices_item["purchase_receipt"] = delivery_note_item.purchase_receipt
+				sales_invoices_item["status"] = delivery_note_item.status
+				sales_invoices_item["posting_date"] = delivery_note_item.posting_date
+				sales_invoices_item["supplier"] = delivery_note_item.supplier
+				sales_invoices_item["purchase_qty"] = delivery_note_item.purchase_qty
+				sales_invoices_item["purchase_rate"] = delivery_note_item.purchase_rate
+				sales_invoices_item["purchase_amount"] = delivery_note_item.purchase_amount
+				sales_invoices_item["batch_no"] = delivery_note_item.batch_no
+				sales_invoices_item["incoming_rate"] = delivery_note_item.incoming_rate
+				incoming_profit_rate = sales_invoices_item.selling_rate - sales_invoices_item.incoming_rate
+				sales_invoices_item["incoming_profit_rate"] = round(incoming_profit_rate, 3)
+				sales_invoices_item["incoming_profit_percentage"] = round((incoming_profit_rate / sales_invoices_item.selling_rate) * 100)
+				sales_invoices_item["incoming_profit_amount"] = round(sales_invoices_item.selling_qty * incoming_profit_rate, 3)
+				wished_profit_rate = (self.filters.wished_earning_percentage / 100) * sales_invoices_item.selling_rate
+				sales_invoices_item["wished_profit_rate"] = round(wished_profit_rate, 3)
+				sales_invoices_item["wished_profit_amount"] = round(sales_invoices_item.selling_qty * wished_profit_rate, 3)
+				supplier_rate = sales_invoices_item.selling_rate + sales_invoices_item.purchase_rate - sales_invoices_item.incoming_rate - wished_profit_rate
+				sales_invoices_item["supplier_rate"] = round(supplier_rate, 3)
+				sales_invoices_item["supplier_amount"] = round(sales_invoices_item.selling_qty * supplier_rate, 3)
+
 		self.sales_invoices_items = sales_invoices_items
+		self.sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
 
 		pass
