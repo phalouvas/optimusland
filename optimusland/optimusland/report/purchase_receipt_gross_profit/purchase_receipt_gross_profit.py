@@ -213,7 +213,11 @@ class GrossProfitGenerator:
 		if not purchase_receipts_items:
 			return 
 
-		batch_nos = ','.join([f"'{item.batch_no}'" for item in purchase_receipts_items])
+		batch_no_list = [item.batch_no for item in purchase_receipts_items]
+		if not batch_no_list:
+			return
+
+		self.filters["batch_no_list"] = batch_no_list
 
 		delivery_notes_items = frappe.db.sql(
 			"""
@@ -230,8 +234,8 @@ class GrossProfitGenerator:
 			WHERE
 				dn.docstatus = 1
 				AND dn.company = %(company)s
-				AND sbe.batch_no IN ({batch_nos})
-			""".format(batch_nos=batch_nos),
+				AND sbe.batch_no IN %(batch_no_list)s
+			""",
 			self.filters,
 			as_dict=1
 		)
