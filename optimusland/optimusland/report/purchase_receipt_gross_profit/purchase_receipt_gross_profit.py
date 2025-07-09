@@ -219,6 +219,11 @@ class GrossProfitGenerator:
 
 		self.filters["batch_no_list"] = batch_no_list
 
+		# Add customer filter to sales_invoices_items query
+		customer_condition = ""
+		if self.filters.customer:
+			customer_condition = "AND dn.customer = %(customer)s"
+
 		delivery_notes_items = frappe.db.sql(
 			"""
 			SELECT
@@ -235,7 +240,8 @@ class GrossProfitGenerator:
 				dn.docstatus = 1
 				AND dn.company = %(company)s
 				AND sbe.batch_no IN %(batch_no_list)s
-			""",
+				{customer_condition}
+			""".format(customer_condition=customer_condition),
 			self.filters,
 			as_dict=1
 		)
