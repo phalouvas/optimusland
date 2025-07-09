@@ -248,16 +248,20 @@ class GrossProfitGenerator:
 
 		delivery_notes_names = ','.join([f"'{item.delivery_note}'" for item in delivery_notes_items])
 
+		# Build a lookup for batch_no to purchase_receipt_item
+		batch_no_to_pr_item = {item.batch_no: item for item in purchase_receipts_items}
+
 		for delivery_note_item in delivery_notes_items:
-			for purchase_receipt_item in purchase_receipts_items:
-				if delivery_note_item.batch_no == purchase_receipt_item.batch_no:
-					delivery_note_item["purchase_receipt"] = purchase_receipt_item.purchase_receipt
-					delivery_note_item["status"] = purchase_receipt_item.status
-					delivery_note_item["posting_date"] = purchase_receipt_item.posting_date
-					delivery_note_item["supplier"] = purchase_receipt_item.supplier
-					delivery_note_item["purchase_qty"] = purchase_receipt_item.purchase_qty
-					delivery_note_item["purchase_rate"] = purchase_receipt_item.purchase_rate
-					delivery_note_item["purchase_amount"] = purchase_receipt_item.purchase_amount
+			batch_no = delivery_note_item.batch_no
+			purchase_receipt_item = batch_no_to_pr_item.get(batch_no)
+			if purchase_receipt_item:
+				delivery_note_item["purchase_receipt"] = purchase_receipt_item.purchase_receipt
+				delivery_note_item["status"] = purchase_receipt_item.status
+				delivery_note_item["posting_date"] = purchase_receipt_item.posting_date
+				delivery_note_item["supplier"] = purchase_receipt_item.supplier
+				delivery_note_item["purchase_qty"] = purchase_receipt_item.purchase_qty
+				delivery_note_item["purchase_rate"] = purchase_receipt_item.purchase_rate
+				delivery_note_item["purchase_amount"] = purchase_receipt_item.purchase_amount
 
 		# Add customer filter to sales_invoices_items query
 		customer_condition = ""
