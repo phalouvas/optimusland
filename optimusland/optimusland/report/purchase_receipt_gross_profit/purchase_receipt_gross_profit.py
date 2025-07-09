@@ -176,6 +176,10 @@ class GrossProfitGenerator:
 			conditions += f" AND pr.supplier = %(supplier)s"
 		if self.filters.purchase_receipt:
 			conditions += f" AND pr.name = %(purchase_receipt)s"
+		if self.filters.batch_no:
+			# Ensure batch_no is searched as a substring
+			self.filters.batch_no = f"%{self.filters.batch_no}%"
+			conditions += f" AND sbe.batch_no LIKE %(batch_no)s"
 
 		purchase_receipts_items = frappe.db.sql(
 			"""
