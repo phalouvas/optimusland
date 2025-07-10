@@ -252,6 +252,10 @@ class GrossProfitGenerator:
 			as_dict=1
 		)
 
+		# Add safety check here
+		if not delivery_notes_items:
+			return
+
 		delivery_notes_names = ','.join([f"'{item.delivery_note}'" for item in delivery_notes_items])
 
 		# Build a lookup for batch_no to purchase_receipt_item
@@ -364,25 +368,48 @@ def calculate_totals_and_averages(data):
 	
 	# Money and quantity columns to sum
 	sum_columns = [
-		"selling_qty", "selling_amount", "incoming_profit_amount", "wished_profit_amount", "supplier_amount"
+		"selling_amount", "incoming_profit_amount", "wished_profit_amount", "supplier_amount"
 	]
 	
-	# Percentage columns to average
-	avg_columns = ["purchase_rate", "selling_rate", "incoming_rate", "incoming_profit_percentage",
-		"wished_profit_rate", "incoming_profit_rate", "supplier_rate"]
-	
-	# Calculate sums
+	# Calculate sums for money columns
 	for col in sum_columns:
 		total_value = sum(float(row.get(col, 0) or 0) for row in data)
 		total_row[col] = round(total_value, 3)
 	
-	# Calculate averages
-	for col in avg_columns:
-		valid_values = [float(row.get(col, 0) or 0) for row in data if row.get(col)]
-		if valid_values:
-			avg_value = sum(valid_values) / len(valid_values)
-			total_row[col] = round(avg_value, 2)
+	# Calculate selling_qty sum excluding negative quantities
+	total_row["selling_qty"] = round(sum(float(row.get("selling_qty", 0) or 0) for row in data if float(row.get("selling_qty", 0) or 0) > 0), 3)
+	
+	# Calculate rates as total amount / total quantity
+	# For rate calculations, use only positive quantities (exclude credit notes)
+	total_selling_qty = total_row.get("selling_qty", 0)
+	total_selling_amount = total_row.get("selling_amount", 0)
+	total_incoming_profit_amount = total_row.get("incoming_profit_amount", 0)
+	total_wished_profit_amount = total_row.get("wished_profit_amount", 0)
+	total_supplier_amount = total_row.get("supplier_amount", 0)
+	
+	if total_selling_qty and total_selling_qty != 0:
+		# Calculate effective rates by dividing total amounts by total quantity
+		total_row["selling_rate"] = round(total_selling_amount / total_selling_qty, 3)
+		total_row["incoming_profit_rate"] = round(total_incoming_profit_amount / total_selling_qty, 3)
+		total_row["wished_profit_rate"] = round(total_wished_profit_amount / total_selling_qty, 3)
+		total_row["supplier_rate"] = round(total_supplier_amount / total_selling_qty, 3)
+		# Calculate incoming_rate as selling_rate - incoming_profit_rate
+		total_row["incoming_rate"] = round(total_row["selling_rate"] - total_row["incoming_profit_rate"], 3)
+		# Calculate purchase_rate as simple average
+		purchase_rates = [float(row.get("purchase_rate", 0) or 0) for row in data if row.get("purchase_rate") is not None]
+		if purchase_rates:
+			total_row["purchase_rate"] = round(sum(purchase_rates) / len(purchase_rates), 3)
 		else:
+			total_row["purchase_rate"] = 0
+	else:
+		# If total quantity is zero, set rates to zero
+		for col in ["selling_rate", "incoming_rate", "purchase_rate", "incoming_profit_rate", "wished_profit_rate", "supplier_rate"]:
 			total_row[col] = 0
+	
+	# Calculate percentage based on totals
+	if total_selling_amount and total_selling_amount != 0:
+		total_row["incoming_profit_percentage"] = round((total_incoming_profit_amount / total_selling_amount) * 100, 0)
+	else:
+		total_row["incoming_profit_percentage"] = 0
 	
 	return total_row
