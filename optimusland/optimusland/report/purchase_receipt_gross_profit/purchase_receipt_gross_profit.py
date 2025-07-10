@@ -229,8 +229,9 @@ class GrossProfitGenerator:
 			SELECT
 				dn.name AS delivery_note,
 				dn.customer,
+				dn.custom_shipping_rate,
 				dni.item_code,
-				sbe.incoming_rate,
+				(COALESCE(dn.custom_shipping_rate, 0) + COALESCE(sbe.incoming_rate, 0)) AS incoming_rate,
 				sbe.batch_no
 			FROM
 				`tabDelivery Note Item` dni
@@ -315,14 +316,14 @@ class GrossProfitGenerator:
 				sales_invoices_item["purchase_amount"] = delivery_note_item.purchase_amount
 				sales_invoices_item["batch_no"] = delivery_note_item.batch_no
 				sales_invoices_item["incoming_rate"] = delivery_note_item.incoming_rate
-				incoming_profit_rate = sales_invoices_item.selling_rate - sales_invoices_item.incoming_rate
+				incoming_profit_rate = sales_invoices_item.selling_rate - delivery_note_item.incoming_rate
 				sales_invoices_item["incoming_profit_rate"] = round(incoming_profit_rate, 3)
 				sales_invoices_item["incoming_profit_percentage"] = round((incoming_profit_rate / sales_invoices_item.selling_rate) * 100)
 				sales_invoices_item["incoming_profit_amount"] = round(sales_invoices_item.selling_qty * incoming_profit_rate, 3)
 				wished_profit_rate = (self.filters.wished_earning_percentage / 100) * sales_invoices_item.selling_rate
 				sales_invoices_item["wished_profit_rate"] = round(wished_profit_rate, 3)
 				sales_invoices_item["wished_profit_amount"] = round(sales_invoices_item.selling_qty * wished_profit_rate, 3)
-				supplier_rate = sales_invoices_item.selling_rate + sales_invoices_item.purchase_rate - sales_invoices_item.incoming_rate - wished_profit_rate
+				supplier_rate = sales_invoices_item.selling_rate + sales_invoices_item.purchase_rate - delivery_note_item.incoming_rate - wished_profit_rate
 				sales_invoices_item["supplier_rate"] = round(supplier_rate, 3)
 				sales_invoices_item["supplier_amount"] = round(sales_invoices_item.selling_qty * supplier_rate, 3)
 
