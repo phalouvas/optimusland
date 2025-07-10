@@ -14,6 +14,11 @@ def execute(filters=None):
 
 	columns = get_columns(filters)
 	data = gross_profit_data.sales_invoices_items
+	
+	# Add totals and averages row
+	if data:
+		total_row = calculate_totals_and_averages(data)
+		data.append(total_row)
 
 	return columns, data
 
@@ -337,3 +342,47 @@ class GrossProfitGenerator:
 		self.sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
 
 		pass
+
+def calculate_totals_and_averages(data):
+	"""Calculate totals for money/quantity columns and averages for rate/percentage columns"""
+	if not data:
+		return {}
+	
+	total_row = {
+		"supplier": "<b>Total</b>",
+		"purchase_receipt": "",
+		"status": "",
+		"posting_date": "",
+		"batch_no": "",
+		"currency": "",
+		"item_code": "",
+		"item_name": "",
+		"sales_invoice": "",
+		"customer": "",
+		"delivery_note": "",
+	}
+	
+	# Money and quantity columns to sum
+	sum_columns = [
+		"selling_qty", "selling_amount", "incoming_profit_amount", "wished_profit_amount", "supplier_amount"
+	]
+	
+	# Percentage columns to average
+	avg_columns = ["purchase_rate", "selling_rate", "incoming_rate", "incoming_profit_percentage",
+		"wished_profit_rate", "incoming_profit_rate", "supplier_rate"]
+	
+	# Calculate sums
+	for col in sum_columns:
+		total_value = sum(float(row.get(col, 0) or 0) for row in data)
+		total_row[col] = round(total_value, 3)
+	
+	# Calculate averages
+	for col in avg_columns:
+		valid_values = [float(row.get(col, 0) or 0) for row in data if row.get(col)]
+		if valid_values:
+			avg_value = sum(valid_values) / len(valid_values)
+			total_row[col] = round(avg_value, 2)
+		else:
+			total_row[col] = 0
+	
+	return total_row
