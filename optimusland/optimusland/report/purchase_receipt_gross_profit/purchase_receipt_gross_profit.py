@@ -368,15 +368,19 @@ def calculate_totals_and_averages(data):
 	
 	# Money and quantity columns to sum
 	sum_columns = [
-		"selling_qty", "selling_amount", "incoming_profit_amount", "wished_profit_amount", "supplier_amount"
+		"selling_amount", "incoming_profit_amount", "wished_profit_amount", "supplier_amount"
 	]
 	
-	# Calculate sums
+	# Calculate sums for money columns
 	for col in sum_columns:
 		total_value = sum(float(row.get(col, 0) or 0) for row in data)
 		total_row[col] = round(total_value, 3)
 	
+	# Calculate selling_qty sum excluding negative quantities
+	total_row["selling_qty"] = round(sum(float(row.get("selling_qty", 0) or 0) for row in data if float(row.get("selling_qty", 0) or 0) > 0), 3)
+	
 	# Calculate rates as total amount / total quantity
+	# For rate calculations, use only positive quantities (exclude credit notes)
 	total_selling_qty = total_row.get("selling_qty", 0)
 	total_selling_amount = total_row.get("selling_amount", 0)
 	total_incoming_profit_amount = total_row.get("incoming_profit_amount", 0)
