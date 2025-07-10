@@ -252,6 +252,10 @@ class GrossProfitGenerator:
 			as_dict=1
 		)
 
+		# Add safety check here
+		if not delivery_notes_items:
+			return
+
 		delivery_notes_names = ','.join([f"'{item.delivery_note}'" for item in delivery_notes_items])
 
 		# Build a lookup for batch_no to purchase_receipt_item
