@@ -1,5 +1,5 @@
 {
- "add_total_row": 1,
+ "add_total_row": 0,
  "add_translate_data": 0,
  "columns": [],
  "creation": "2024-08-09 09:34:58.437230",
@@ -11,7 +11,7 @@
  "is_standard": "Yes",
  "letter_head": "Optimus Land",
  "letterhead": null,
- "modified": "2025-07-10 06:54:47.918935",
+ "modified": "2025-07-10 07:29:42.680634",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Purchase Receipt Gross Profit",
