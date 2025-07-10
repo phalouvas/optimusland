@@ -176,6 +176,10 @@ class GrossProfitGenerator:
 			conditions += f" AND pr.supplier = %(supplier)s"
 		if self.filters.purchase_receipt:
 			conditions += f" AND pr.name = %(purchase_receipt)s"
+		if self.filters.batch_no:
+			# Ensure batch_no is searched as a substring
+			self.filters.batch_no = f"%{self.filters.batch_no}%"
+			conditions += f" AND sbe.batch_no LIKE %(batch_no)s"
 
 		purchase_receipts_items = frappe.db.sql(
 			"""
@@ -209,7 +213,16 @@ class GrossProfitGenerator:
 		if not purchase_receipts_items:
 			return 
 
-		batch_nos = ','.join([f"'{item.batch_no}'" for item in purchase_receipts_items])
+		batch_no_list = [item.batch_no for item in purchase_receipts_items]
+		if not batch_no_list:
+			return
+
+		self.filters["batch_no_list"] = batch_no_list
+
+		# Add customer filter to sales_invoices_items query
+		customer_condition = ""
+		if self.filters.customer:
+			customer_condition = "AND dn.customer = %(customer)s"
 
 		delivery_notes_items = frappe.db.sql(
 			"""
@@ -226,24 +239,34 @@ class GrossProfitGenerator:
 			WHERE
 				dn.docstatus = 1
 				AND dn.company = %(company)s
-				AND sbe.batch_no IN ({batch_nos})
-			""".format(batch_nos=batch_nos),
+				AND sbe.batch_no IN %(batch_no_list)s
+				{customer_condition}
+			""".format(customer_condition=customer_condition),
 			self.filters,
 			as_dict=1
 		)
 
 		delivery_notes_names = ','.join([f"'{item.delivery_note}'" for item in delivery_notes_items])
 
+		# Build a lookup for batch_no to purchase_receipt_item
+		batch_no_to_pr_item = {item.batch_no: item for item in purchase_receipts_items}
+
 		for delivery_note_item in delivery_notes_items:
-			for purchase_receipt_item in purchase_receipts_items:
-				if delivery_note_item.batch_no == purchase_receipt_item.batch_no:
-					delivery_note_item["purchase_receipt"] = purchase_receipt_item.purchase_receipt
-					delivery_note_item["status"] = purchase_receipt_item.status
-					delivery_note_item["posting_date"] = purchase_receipt_item.posting_date
-					delivery_note_item["supplier"] = purchase_receipt_item.supplier
-					delivery_note_item["purchase_qty"] = purchase_receipt_item.purchase_qty
-					delivery_note_item["purchase_rate"] = purchase_receipt_item.purchase_rate
-					delivery_note_item["purchase_amount"] = purchase_receipt_item.purchase_amount
+			batch_no = delivery_note_item.batch_no
+			purchase_receipt_item = batch_no_to_pr_item.get(batch_no)
+			if purchase_receipt_item:
+				delivery_note_item["purchase_receipt"] = purchase_receipt_item.purchase_receipt
+				delivery_note_item["status"] = purchase_receipt_item.status
+				delivery_note_item["posting_date"] = purchase_receipt_item.posting_date
+				delivery_note_item["supplier"] = purchase_receipt_item.supplier
+				delivery_note_item["purchase_qty"] = purchase_receipt_item.purchase_qty
+				delivery_note_item["purchase_rate"] = purchase_receipt_item.purchase_rate
+				delivery_note_item["purchase_amount"] = purchase_receipt_item.purchase_amount
+
+		# Add customer filter to sales_invoices_items query
+		customer_condition = ""
+		if self.filters.customer:
+			customer_condition = "AND si.customer = %(customer)s"
 
 		sales_invoices_items = frappe.db.sql(
 			"""
@@ -264,35 +287,52 @@ class GrossProfitGenerator:
 				si.docstatus = 1
 				AND si.company = %(company)s
 				AND sii.delivery_note IN ({delivery_notes_names})
-			""".format(delivery_notes_names=delivery_notes_names),
+				{customer_condition}
+			""".format(
+				delivery_notes_names=delivery_notes_names,
+				customer_condition=customer_condition
+			),
 			self.filters,
 			as_dict=1
 		)
 
-		for sales_invoices_item in sales_invoices_items:
-			for delivery_note_item in delivery_notes_items:
-				if sales_invoices_item.delivery_note == delivery_note_item.delivery_note and sales_invoices_item.item_code == delivery_note_item.item_code:
-					sales_invoices_item["purchase_receipt"] = delivery_note_item.purchase_receipt
-					sales_invoices_item["status"] = delivery_note_item.status
-					sales_invoices_item["posting_date"] = delivery_note_item.posting_date
-					sales_invoices_item["supplier"] = delivery_note_item.supplier
-					sales_invoices_item["purchase_qty"] = delivery_note_item.purchase_qty
-					sales_invoices_item["purchase_rate"] = delivery_note_item.purchase_rate
-					sales_invoices_item["purchase_amount"] = delivery_note_item.purchase_amount
-					sales_invoices_item["batch_no"] = delivery_note_item.batch_no
-					sales_invoices_item["incoming_rate"] = delivery_note_item.incoming_rate
-					incoming_profit_rate = sales_invoices_item.selling_rate - sales_invoices_item.incoming_rate
-					sales_invoices_item["incoming_profit_rate"] = round(incoming_profit_rate, 3)
-					sales_invoices_item["incoming_profit_percentage"] = round((incoming_profit_rate / sales_invoices_item.selling_rate) * 100)
-					sales_invoices_item["incoming_profit_amount"] = round(sales_invoices_item.selling_qty * incoming_profit_rate, 3)
-					wished_profit_rate = ( self.filters.wished_earning_percentage / 100 ) * sales_invoices_item.selling_rate
-					sales_invoices_item["wished_profit_rate"] = round(wished_profit_rate, 3)
-					sales_invoices_item["wished_profit_amount"] = round(sales_invoices_item.selling_qty * wished_profit_rate, 3)
-					supplier_rate = sales_invoices_item.selling_rate + sales_invoices_item.purchase_rate - sales_invoices_item.incoming_rate - wished_profit_rate
-					sales_invoices_item["supplier_rate"] = round(supplier_rate, 3)
-					sales_invoices_item["supplier_amount"] = round(sales_invoices_item.selling_qty * supplier_rate, 3)
+		# Build a lookup for delivery_note + item_code
+		delivery_note_lookup = {
+			(item.delivery_note, item.item_code): item
+			for item in delivery_notes_items
+		}
 
-		sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
+		for sales_invoices_item in sales_invoices_items:
+			key = (sales_invoices_item.delivery_note, sales_invoices_item.item_code)
+			delivery_note_item = delivery_note_lookup.get(key)
+			if delivery_note_item:
+				sales_invoices_item["purchase_receipt"] = delivery_note_item.purchase_receipt
+				sales_invoices_item["status"] = delivery_note_item.status
+				sales_invoices_item["posting_date"] = delivery_note_item.posting_date
+				sales_invoices_item["supplier"] = delivery_note_item.supplier
+				sales_invoices_item["purchase_qty"] = delivery_note_item.purchase_qty
+				sales_invoices_item["purchase_rate"] = delivery_note_item.purchase_rate
+				sales_invoices_item["purchase_amount"] = delivery_note_item.purchase_amount
+				sales_invoices_item["batch_no"] = delivery_note_item.batch_no
+				sales_invoices_item["incoming_rate"] = delivery_note_item.incoming_rate
+				incoming_profit_rate = sales_invoices_item.selling_rate - sales_invoices_item.incoming_rate
+				sales_invoices_item["incoming_profit_rate"] = round(incoming_profit_rate, 3)
+				sales_invoices_item["incoming_profit_percentage"] = round((incoming_profit_rate / sales_invoices_item.selling_rate) * 100)
+				sales_invoices_item["incoming_profit_amount"] = round(sales_invoices_item.selling_qty * incoming_profit_rate, 3)
+				wished_profit_rate = (self.filters.wished_earning_percentage / 100) * sales_invoices_item.selling_rate
+				sales_invoices_item["wished_profit_rate"] = round(wished_profit_rate, 3)
+				sales_invoices_item["wished_profit_amount"] = round(sales_invoices_item.selling_qty * wished_profit_rate, 3)
+				supplier_rate = sales_invoices_item.selling_rate + sales_invoices_item.purchase_rate - sales_invoices_item.incoming_rate - wished_profit_rate
+				sales_invoices_item["supplier_rate"] = round(supplier_rate, 3)
+				sales_invoices_item["supplier_amount"] = round(sales_invoices_item.selling_qty * supplier_rate, 3)
+
+		# Remove any sales invoice items not found (i.e., without a matching delivery_note_item)
+		sales_invoices_items = [
+			item for item in sales_invoices_items
+			if (item.delivery_note, item.item_code) in delivery_note_lookup
+		]
+
 		self.sales_invoices_items = sales_invoices_items
+		self.sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
 
 		pass

@@ -55,6 +55,17 @@ frappe.query_reports["Purchase Receipt Gross Profit"] = {
 			options: "Supplier",
 		},
 		{
+			fieldname: "batch_no",
+			label: __("Batch No"),
+			fieldtype: "Data",
+		},
+		{
+			fieldname: "customer",
+			label: __("Customer"),
+			fieldtype: "Link",
+			options: "Customer",
+		},
+		{
 			fieldname: "wished_earning_percentage",
 			label: __("Wished Earning %"),
 			fieldtype: "Int",
