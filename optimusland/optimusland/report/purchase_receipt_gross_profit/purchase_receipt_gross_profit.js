@@ -71,5 +71,12 @@ frappe.query_reports["Purchase Receipt Gross Profit"] = {
 			fieldtype: "Int",
 			default: 5,
 		}
-	]
+	],
+	formatter: function(value, row, column, data, default_formatter) {
+		value = default_formatter(value, row, column, data);
+		if (data && data.supplier === "Total") {
+			return `<b>${value}</b>`;
+		}
+		return value;
+	},
 };

@@ -349,7 +349,7 @@ def calculate_totals_and_averages(data):
 		return {}
 	
 	total_row = {
-		"supplier": "<b>Total</b>",
+		"supplier": "Total",
 		"purchase_receipt": "",
 		"status": "",
 		"posting_date": "",
