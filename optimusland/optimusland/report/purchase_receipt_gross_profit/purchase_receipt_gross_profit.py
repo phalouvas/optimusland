@@ -336,12 +336,6 @@ class GrossProfitGenerator:
 				sales_invoices_item["supplier_rate"] = round(supplier_rate, 3)
 				sales_invoices_item["supplier_amount"] = round(sales_invoices_item.selling_qty * supplier_rate, 3)
 
-		# Remove any sales invoice items not found (i.e., without a matching delivery_note_item)
-		sales_invoices_items = [
-			item for item in sales_invoices_items
-			if (item.delivery_note, item.item_code) in delivery_note_lookup
-		]
-
 		self.sales_invoices_items = sales_invoices_items
 		self.sales_invoices_items.sort(key=lambda x: x.get('supplier', ''))
 
