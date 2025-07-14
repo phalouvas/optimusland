@@ -1,6 +1,6 @@
 frappe.ui.form.on('Delivery Note', {
     refresh: function (frm) {
-        if (!frm.doc.__islocal && frm.doc.docstatus === 1 && !frm.doc.custom_is_shipping_cost_added) {
+        if (!frm.doc.__islocal && frm.doc.docstatus === 1 ) {
             frm.add_custom_button(__('Add Shipping Cost'), function () {
                 // Create a dialog with the required fields
                 let d = new frappe.ui.Dialog({
@@ -40,11 +40,6 @@ frappe.ui.form.on('Delivery Note', {
                     ],
                     primary_action_label: __('Apply'),
                     primary_action: function(values) {
-                        // Validate shipping cost is greater than zero
-                        if (values.shipping_cost <= 0) {
-                            frappe.throw(__('Shipping Cost must be greater than zero'));
-                            return;
-                        }
                         
                         // Close the dialog
                         d.hide();
