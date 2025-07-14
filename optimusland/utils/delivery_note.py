@@ -35,4 +35,10 @@ def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_in
     
     frappe.db.commit()
 
+    # Log the shipping cost addition using standard Frappe comment logging
+    doc.add_comment(
+        "Info",
+        f"Shipping cost of €{shipping_cost} added. Purchase Invoice: {purchase_invoice if purchase_invoice else 'N/A'}"
+    )
+
     return True
