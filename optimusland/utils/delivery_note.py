@@ -36,9 +36,13 @@ def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_in
     frappe.db.commit()
 
     # Log the shipping cost addition using standard Frappe comment logging
+    if purchase_invoice:
+        purchase_invoice_link = f'<a href="/app/purchase-invoice/{purchase_invoice}" >{purchase_invoice}</a>'
+    else:
+        purchase_invoice_link = "N/A"
     doc.add_comment(
         "Info",
-        f"Shipping cost of €{shipping_cost} added. Purchase Invoice: {purchase_invoice if purchase_invoice else 'N/A'}"
+        f"Shipping cost of €{shipping_cost} added. Purchase Invoice: {purchase_invoice_link}"
     )
 
     return True
