@@ -3,7 +3,16 @@ import datetime
 
 @frappe.whitelist()
 def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_invoice: str = None):
+
+    # Return if not shipping cost is provided
+    if not shipping_cost and not purchase_invoice:
+        frappe.throw("Please provide shipping cost.")
+
     doc = frappe.get_doc("Delivery Note", delivery_note_name)
+
+    # Return if the delivery note is not found or is not submitted
+    if not doc or doc.docstatus != 1:
+        frappe.throw("Delivery Note not found or not submitted.")
     
     # Update the shipping cost field if provided
     if shipping_cost:
@@ -15,10 +24,7 @@ def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_in
         
     if doc.custom_shipping_cost:
         total_qty = sum(item.qty for item in doc.items)
-        shipping_cost_per_qty = doc.custom_shipping_cost / total_qty
-
-    else:
-        frappe.throw("No shipping cost defined. Either select a Purchase Invoice or enter a custom shipping cost.")
+        shipping_cost_per_qty = doc.custom_shipping_rate  + ( doc.custom_shipping_cost / total_qty )
 
     frappe.db.set_value("Delivery Note", delivery_note_name, {
         "custom_shipping_cost": float(shipping_cost),
@@ -28,5 +34,5 @@ def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_in
     }, update_modified=False)
     
     frappe.db.commit()
-    
+
     return True
