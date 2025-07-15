@@ -115,13 +115,6 @@ def get_columns():
 			"fieldname": "variance",
 			"fieldtype": "Currency",
 			"width": 100
-		},
-		{
-			"label": _("Company"),
-			"fieldname": "company",
-			"fieldtype": "Link",
-			"options": "Company",
-			"width": 120
 		}
 	]
 
@@ -227,8 +220,10 @@ def get_conditions(filters):
 	"""Build WHERE conditions based on filters"""
 	conditions = []
 	
-	if filters.get("company"):
-		conditions.append("AND dn.company = %(company)s")
+	# Make company filter mandatory
+	if not filters.get("company"):
+		raise frappe.ValidationError(_("Company filter is required."))
+	conditions.append("AND dn.company = %(company)s")
 	
 	if filters.get("customer"):
 		conditions.append("AND dn.customer = %(customer)s")

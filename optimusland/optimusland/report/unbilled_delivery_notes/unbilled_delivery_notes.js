@@ -9,7 +9,7 @@ frappe.query_reports["Unbilled Delivery Notes"] = {
 			"fieldtype": "Link",
 			"options": "Company",
 			"default": frappe.defaults.get_user_default("Company"),
-			"reqd": 0
+			"reqd": 1
 		},
 		{
 			"fieldname": "from_date",
