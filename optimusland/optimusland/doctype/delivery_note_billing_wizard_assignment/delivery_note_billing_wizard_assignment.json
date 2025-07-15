@@ -1,0 +1,88 @@
+{
+ "actions": [],
+ "creation": "2025-01-15 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "delivery_note_item",
+  "sales_invoice_item",
+  "qty_to_assign",
+  "rate_variance",
+  "amount_to_assign",
+  "column_break_6",
+  "assignment_type",
+  "confidence_level",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "delivery_note_item",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Delivery Note Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sales_invoice_item",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sales Invoice Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_to_assign",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty to Assign"
+  },
+  {
+   "fieldname": "rate_variance",
+   "fieldtype": "Currency",
+   "label": "Rate Variance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount_to_assign",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount to Assign",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "assignment_type",
+   "fieldtype": "Select",
+   "label": "Assignment Type",
+   "options": "Automatic\nManual\nPartial",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confidence_level",
+   "fieldtype": "Select",
+   "label": "Confidence Level",
+   "options": "High\nMedium\nLow",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-15 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Optimusland",
+ "name": "Delivery Note Billing Wizard Assignment",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

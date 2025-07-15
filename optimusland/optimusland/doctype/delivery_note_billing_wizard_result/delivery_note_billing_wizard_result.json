@@ -1,0 +1,92 @@
+{
+ "actions": [],
+ "creation": "2025-01-15 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "delivery_note",
+  "sales_invoice",
+  "item_code",
+  "processed_qty",
+  "status",
+  "column_break_6",
+  "error_message",
+  "success_message",
+  "process_time"
+ ],
+ "fields": [
+  {
+   "fieldname": "delivery_note",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Delivery Note",
+   "options": "Delivery Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "processed_qty",
+   "fieldtype": "Float",
+   "label": "Processed Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Success\nFailed\nWarning\nSkipped",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "Error Message",
+   "read_only": 1
+  },
+  {
+   "fieldname": "success_message",
+   "fieldtype": "Small Text",
+   "label": "Success Message",
+   "read_only": 1
+  },
+  {
+   "fieldname": "process_time",
+   "fieldtype": "Datetime",
+   "label": "Process Time",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-15 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Optimusland",
+ "name": "Delivery Note Billing Wizard Result",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

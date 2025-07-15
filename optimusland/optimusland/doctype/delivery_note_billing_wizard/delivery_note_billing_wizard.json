@@ -1,0 +1,170 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-15 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "customer",
+  "from_date",
+  "to_date",
+  "column_break_5",
+  "total_selected_items",
+  "total_selected_amount",
+  "processing_status",
+  "section_break_9",
+  "unbilled_items",
+  "section_break_11",
+  "invoice_matches",
+  "section_break_13",
+  "assignments",
+  "section_break_15",
+  "processing_results"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_selected_items",
+   "fieldtype": "Int",
+   "label": "Total Selected Items",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_selected_amount",
+   "fieldtype": "Currency",
+   "label": "Total Selected Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "processing_status",
+   "fieldtype": "Select",
+   "label": "Processing Status",
+   "options": "Draft\nReady to Process\nProcessing\nCompleted\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_9",
+   "fieldtype": "Section Break",
+   "label": "Unbilled Delivery Note Items"
+  },
+  {
+   "fieldname": "unbilled_items",
+   "fieldtype": "Table",
+   "label": "Unbilled Items",
+   "options": "Delivery Note Billing Wizard Item"
+  },
+  {
+   "fieldname": "section_break_11",
+   "fieldtype": "Section Break",
+   "label": "Potential Invoice Matches"
+  },
+  {
+   "fieldname": "invoice_matches",
+   "fieldtype": "Table",
+   "label": "Invoice Matches",
+   "options": "Delivery Note Billing Wizard Match"
+  },
+  {
+   "fieldname": "section_break_13",
+   "fieldtype": "Section Break",
+   "label": "Billing Assignments"
+  },
+  {
+   "fieldname": "assignments",
+   "fieldtype": "Table",
+   "label": "Assignments",
+   "options": "Delivery Note Billing Wizard Assignment"
+  },
+  {
+   "fieldname": "section_break_15",
+   "fieldtype": "Section Break",
+   "label": "Processing Results"
+  },
+  {
+   "fieldname": "processing_results",
+   "fieldtype": "Table",
+   "label": "Processing Results",
+   "options": "Delivery Note Billing Wizard Result"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_virtual": 1,
+ "links": [],
+ "modified": "2025-01-15 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Optimusland",
+ "name": "Delivery Note Billing Wizard",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
