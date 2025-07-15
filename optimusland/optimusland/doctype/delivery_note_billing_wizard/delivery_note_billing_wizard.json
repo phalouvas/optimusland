@@ -1,9 +1,7 @@
 {
  "actions": [],
- "allow_rename": 0,
- "creation": "2025-01-15 10:00:00.000000",
+ "creation": "2025-01-15 10:00:00",
  "doctype": "DocType",
- "editable_grid": 0,
  "engine": "InnoDB",
  "field_order": [
   "wizard_tab",
@@ -32,15 +30,16 @@
  ],
  "fields": [
   {
+   "default": "1. Load Items",
    "fieldname": "wizard_tab",
    "fieldtype": "Select",
    "label": "Wizard Step",
-   "options": "1. Load Items\n2. Find Matches\n3. Create Assignments\n4. Process Results",
-   "default": "1. Load Items"
+   "options": "1. Load Items\n2. Find Matches\n3. Create Assignments\n4. Process Results"
   },
   {
    "fieldname": "company",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Company",
    "options": "Company",
    "reqd": 1
@@ -84,18 +83,18 @@
    "read_only": 1
   },
   {
+   "default": "Draft",
    "fieldname": "processing_status",
    "fieldtype": "Select",
    "label": "Processing Status",
    "options": "Draft\nItems Loaded\nMatches Found\nAssignments Created\nProcessing\nCompleted\nFailed",
-   "read_only": 1,
-   "default": "Draft"
+   "read_only": 1
   },
   {
+   "depends_on": "eval:doc.wizard_tab=='1. Load Items'",
    "fieldname": "section_break_items",
    "fieldtype": "Section Break",
-   "label": "Unbilled Delivery Note Items",
-   "depends_on": "eval:doc.wizard_tab=='1. Load Items'"
+   "label": "Unbilled Delivery Note Items"
   },
   {
    "fieldname": "unbilled_items_html",
@@ -103,10 +102,10 @@
    "label": "Unbilled Items"
   },
   {
+   "depends_on": "eval:doc.wizard_tab=='2. Find Matches'",
    "fieldname": "section_break_matches",
-   "fieldtype": "Section Break", 
-   "label": "Potential Invoice Matches",
-   "depends_on": "eval:doc.wizard_tab=='2. Find Matches'"
+   "fieldtype": "Section Break",
+   "label": "Potential Invoice Matches"
   },
   {
    "fieldname": "invoice_matches_html",
@@ -114,10 +113,10 @@
    "label": "Invoice Matches"
   },
   {
+   "depends_on": "eval:doc.wizard_tab=='3. Create Assignments'",
    "fieldname": "section_break_assignments",
    "fieldtype": "Section Break",
-   "label": "Billing Assignments",
-   "depends_on": "eval:doc.wizard_tab=='3. Create Assignments'"
+   "label": "Billing Assignments"
   },
   {
    "fieldname": "assignments_html",
@@ -125,10 +124,10 @@
    "label": "Assignments"
   },
   {
+   "depends_on": "eval:doc.wizard_tab=='4. Process Results'",
    "fieldname": "section_break_results",
    "fieldtype": "Section Break",
-   "label": "Processing Results",
-   "depends_on": "eval:doc.wizard_tab=='4. Process Results'"
+   "label": "Processing Results"
   },
   {
    "fieldname": "processing_results_html",
@@ -138,39 +137,39 @@
   {
    "fieldname": "section_break_data",
    "fieldtype": "Section Break",
-   "label": "Data Storage",
-   "hidden": 1
+   "hidden": 1,
+   "label": "Data Storage"
   },
   {
    "fieldname": "unbilled_items_data",
    "fieldtype": "Long Text",
-   "label": "Unbilled Items Data",
-   "hidden": 1
+   "hidden": 1,
+   "label": "Unbilled Items Data"
   },
   {
    "fieldname": "invoice_matches_data",
    "fieldtype": "Long Text",
-   "label": "Invoice Matches Data",
-   "hidden": 1
+   "hidden": 1,
+   "label": "Invoice Matches Data"
   },
   {
    "fieldname": "assignments_data",
    "fieldtype": "Long Text",
-   "label": "Assignments Data",
-   "hidden": 1
+   "hidden": 1,
+   "label": "Assignments Data"
   },
   {
    "fieldname": "processing_results_data",
    "fieldtype": "Long Text",
-   "label": "Processing Results Data",
-   "hidden": 1
+   "hidden": 1,
+   "label": "Processing Results Data"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_virtual": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-01-15 10:00:00.000000",
+ "modified": "2025-07-15 18:13:04.877004",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Delivery Note Billing Wizard",
@@ -180,42 +179,14 @@
    "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
-   "report": 1,
-   "role": "Accounts User",
+   "role": "System Manager",
    "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Sales User",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Stock User",
-   "share": 1,
-   "submit": 1,
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -39,10 +39,28 @@ class DeliveryNoteBillingWizard(Document):
 			doc.name = doctype
 			return doc
 
+	def db_insert(self, *args, **kwargs):
+		pass
+
 	# Override load_from_db to prevent DB access
 	def load_from_db(self):
 		"""Do nothing for virtual doctype."""
 		return
+	
+	def db_update(self):
+		pass
+
+	@staticmethod
+	def get_list(args):
+		pass
+
+	@staticmethod
+	def get_count(args):
+		pass
+
+	@staticmethod
+	def get_stats(args):
+		pass
 
 	def check_if_latest(self):
 		"""Override to prevent version check for virtual doctype"""
@@ -756,12 +774,6 @@ class DeliveryNoteBillingWizard(Document):
 		except Exception as e:
 			frappe.db.rollback()
 			raise e
-
-	def update_totals(self):
-		"""Update summary totals"""
-		selected_items = [item for item in self.unbilled_items if item.get('selected')]
-		self.total_selected_items = len(selected_items)
-		self.total_selected_amount = sum(flt(item.amount) for item in selected_items)
 
 	@frappe.whitelist()
 	def update_selection(self):
