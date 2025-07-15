@@ -38,7 +38,7 @@ frappe.query_reports["Unbilled Delivery Notes"] = {
 		value = default_formatter(value, row, column, data);
 		
 		// Handle summary row formatting
-		if (data && data.customer === '<b>TOTAL</b>') {
+		if (data && data.customer === 'TOTAL') {
 			if (column.fieldname == "customer") {
 				return value;  // Already has <b> tags
 			}
