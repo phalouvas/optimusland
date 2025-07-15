@@ -774,9 +774,3 @@ class DeliveryNoteBillingWizard(Document):
 		except Exception as e:
 			frappe.db.rollback()
 			raise e
-
-	@frappe.whitelist()
-	def update_selection(self):
-		"""Update totals when selection changes"""
-		self.update_totals()
-		return True
