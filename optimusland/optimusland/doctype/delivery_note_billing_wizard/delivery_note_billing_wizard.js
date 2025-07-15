@@ -17,6 +17,17 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 		}
 		
 		// Add JavaScript functions for HTML interactions
+		function bindSelectAllCheckbox() {
+			setTimeout(function() {
+				var selectAll = document.getElementById('select-all-items');
+				if (selectAll) {
+					selectAll.onchange = function() {
+						window.select_all_items_toggle(this.checked);
+					};
+				}
+			}, 100);
+		}
+
 		window.update_item_selection = function(item_index, selected) {
 			frm.call('update_selection', {
 				item_index: item_index,
@@ -27,6 +38,10 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 					if (r.message.unbilled_items_html) {
 						frm.set_df_property('unbilled_items_html', 'options', r.message.unbilled_items_html);
 						frm.refresh_field('unbilled_items_html');
+						// Re-bind the select-all checkbox after updating HTML
+						setTimeout(function() {
+							bindSelectAllCheckbox();
+						}, 100);
 					}
 					// Update totals
 					if (r.message.total_selected_items !== undefined) {
@@ -43,11 +58,32 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 		
 		window.select_all_items_toggle = function(select_all) {
 			frm.call('select_all_items', {select_all: select_all}).then(r => {
-				frm.refresh();
+				if (r.message) {
+					// Update the HTML table with backend response
+					if (r.message.unbilled_items_html) {
+						frm.set_df_property('unbilled_items_html', 'options', r.message.unbilled_items_html);
+						frm.refresh_field('unbilled_items_html');
+						// Re-bind the select-all checkbox after updating HTML
+						setTimeout(function() {
+							bindSelectAllCheckbox();
+						}, 100);
+					}
+					// Update totals
+					if (r.message.total_selected_items !== undefined) {
+						frm.set_value('total_selected_items', r.message.total_selected_items);
+						frm.refresh_field('total_selected_items');
+					}
+					if (r.message.total_selected_amount !== undefined) {
+						frm.set_value('total_selected_amount', r.message.total_selected_amount);
+						frm.refresh_field('total_selected_amount');
+					}
+				}
 			});
 		};
 		
 		// Add CSS for better table styling
+		// Bind select-all checkbox after initial table render
+		bindSelectAllCheckbox();
 		$('head').append(`
 			<style>
 				.wizard-table {
@@ -92,7 +128,18 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 					frm.call('load_unbilled_items').then(r => {
 						if (r.message && r.message.status === 'success') {
 							frm.set_value('wizard_tab', '1. Load Items');
-							frm.set_df_property('unbilled_items_html', 'options', r.message.unbilled_items_html);
+							if (r.message.unbilled_items_html) {
+								frm.set_df_property('unbilled_items_html', 'options', r.message.unbilled_items_html);
+								frm.refresh_field('unbilled_items_html');
+								setTimeout(function() {
+									var selectAll = document.getElementById('select-all-items');
+									if (selectAll) {
+										selectAll.onchange = function() {
+											window.select_all_items_toggle(this.checked);
+										};
+									}
+								}, 100);
+							}
 							frm.refresh();
 						}
 					});
@@ -141,15 +188,11 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 		// Always show selection helper buttons if items are loaded
 		if (frm.doc.processing_status !== 'Draft' && frm.doc.total_items_found > 0) {
 			frm.add_custom_button(__('Select All'), function() {
-				frm.call('select_all_items', {select_all: true}).then(r => {
-					frm.refresh();
-				});
+				window.select_all_items_toggle(true);
 			}, __('Selection'));
 			
 			frm.add_custom_button(__('Deselect All'), function() {
-				frm.call('select_all_items', {select_all: false}).then(r => {
-					frm.refresh();
-				});
+				window.select_all_items_toggle(false);
 			}, __('Selection'));
 		}
 		

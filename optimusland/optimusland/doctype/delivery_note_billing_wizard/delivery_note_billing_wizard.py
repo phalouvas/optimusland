@@ -336,7 +336,9 @@ class DeliveryNoteBillingWizard(Document):
 			'unbilled_items_html': self.unbilled_items_html,
 			'invoice_matches_html': self.invoice_matches_html,
 			'assignments_html': self.assignments_html,
-			'processing_results_html': self.processing_results_html
+			'processing_results_html': self.processing_results_html,
+			'total_selected_items': getattr(self, 'total_selected_items', 0),
+			'total_selected_amount': getattr(self, 'total_selected_amount', 0)
 		}
 
 	def render_unbilled_items_table(self):
@@ -345,12 +347,17 @@ class DeliveryNoteBillingWizard(Document):
 		if not items:
 			return "<p>No items loaded. Click 'Load Unbilled Items' to begin.</p>"
 		
-		html = """
+		# Check if all items are selected for select-all checkbox state
+		selected_items = [item for item in items if item.get('selected')]
+		all_selected = len(selected_items) == len(items) and len(items) > 0
+		select_all_checked = "checked" if all_selected else ""
+		
+		html = f"""
 		<div class="table-responsive">
 			<table class="table table-bordered table-striped">
 				<thead>
 					<tr>
-						<th><input type="checkbox" id="select-all-items"></th>
+						<th><input type="checkbox" id="select-all-items" {select_all_checked}></th>
 						<th>Delivery Note</th>
 						<th>Item Code</th>
 						<th>Item Name</th>
