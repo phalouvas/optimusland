@@ -359,6 +359,7 @@ class DeliveryNoteBillingWizard(Document):
 					<tr>
 						<th><input type="checkbox" id="select-all-items" {select_all_checked}></th>
 						<th>Delivery Note</th>
+						<th>Customer</th>
 						<th>Item Code</th>
 						<th>Item Name</th>
 						<th>Qty</th>
@@ -378,10 +379,17 @@ class DeliveryNoteBillingWizard(Document):
 			
 			checked = "checked" if item.get('selected') else ""
 			
+			# Create clickable links
+			delivery_note = item.get('delivery_note', '')
+			customer = item.get('customer', '')
+			delivery_note_link = f'<a href="/app/delivery-note/{delivery_note}" target="_blank">{delivery_note}</a>' if delivery_note else ''
+			customer_link = f'<a href="/app/customer/{customer}" target="_blank">{customer}</a>' if customer else ''
+			
 			html += f"""
 				<tr class="{variance_class}">
 					<td><input type="checkbox" {checked} onchange="update_item_selection({i}, this.checked)"></td>
-					<td>{item.get('delivery_note', '')}</td>
+					<td>{delivery_note_link}</td>
+					<td>{customer_link}</td>
 					<td>{item.get('item_code', '')}</td>
 					<td>{item.get('item_name', '')}</td>
 					<td>{item.get('qty', 0)}</td>
@@ -412,6 +420,7 @@ class DeliveryNoteBillingWizard(Document):
 				<thead>
 					<tr>
 						<th>Sales Invoice</th>
+						<th>Customer</th>
 						<th>Item Code</th>
 						<th>Available Qty</th>
 						<th>Rate</th>
@@ -433,9 +442,16 @@ class DeliveryNoteBillingWizard(Document):
 			else:
 				status_class = "table-danger"
 			
+			# Create clickable links
+			sales_invoice = match.get('sales_invoice', '')
+			customer = match.get('customer', '')
+			sales_invoice_link = f'<a href="/app/sales-invoice/{sales_invoice}" target="_blank">{sales_invoice}</a>' if sales_invoice else ''
+			customer_link = f'<a href="/app/customer/{customer}" target="_blank">{customer}</a>' if customer else ''
+			
 			html += f"""
 				<tr class="{status_class}">
-					<td>{match.get('sales_invoice', '')}</td>
+					<td>{sales_invoice_link}</td>
+					<td>{customer_link}</td>
 					<td>{match.get('item_code', '')}</td>
 					<td>{match.get('available_qty', 0)}</td>
 					<td>{frappe.format(match.get('rate', 0), {'fieldtype': 'Currency'})}</td>
@@ -484,10 +500,24 @@ class DeliveryNoteBillingWizard(Document):
 			else:
 				confidence_class = "table-danger"
 			
+			# Parse assignment items to create links
+			dn_item = assignment.get('delivery_note_item', '')
+			si_item = assignment.get('sales_invoice_item', '')
+			
+			# Create clickable links for delivery note and sales invoice
+			dn_link = dn_item
+			si_link = si_item
+			if '-' in dn_item:
+				dn_name = dn_item.split('-')[0]
+				dn_link = f'<a href="/app/delivery-note/{dn_name}" target="_blank">{dn_item}</a>'
+			if '-' in si_item:
+				si_name = si_item.split('-')[0]
+				si_link = f'<a href="/app/sales-invoice/{si_name}" target="_blank">{si_item}</a>'
+			
 			html += f"""
 				<tr class="{confidence_class}">
-					<td>{assignment.get('delivery_note_item', '')}</td>
-					<td>{assignment.get('sales_invoice_item', '')}</td>
+					<td>{dn_link}</td>
+					<td>{si_link}</td>
 					<td>{assignment.get('qty_to_assign', 0)}</td>
 					<td>{frappe.format(assignment.get('amount_to_assign', 0), {'fieldtype': 'Currency'})}</td>
 					<td>{assignment.get('assignment_type', '')}</td>
@@ -540,10 +570,16 @@ class DeliveryNoteBillingWizard(Document):
 			
 			message = result.get('success_message') or result.get('error_message', '')
 			
+			# Create clickable links
+			delivery_note = result.get('delivery_note', '')
+			sales_invoice = result.get('sales_invoice', '')
+			delivery_note_link = f'<a href="/app/delivery-note/{delivery_note}" target="_blank">{delivery_note}</a>' if delivery_note else ''
+			sales_invoice_link = f'<a href="/app/sales-invoice/{sales_invoice}" target="_blank">{sales_invoice}</a>' if sales_invoice else ''
+			
 			html += f"""
 				<tr class="{status_class}">
-					<td>{result.get('delivery_note', '')}</td>
-					<td>{result.get('sales_invoice', '')}</td>
+					<td>{delivery_note_link}</td>
+					<td>{sales_invoice_link}</td>
 					<td>{result.get('item_code', '')}</td>
 					<td>{result.get('processed_qty', 0)}</td>
 					<td>{result.get('status', '')}</td>
