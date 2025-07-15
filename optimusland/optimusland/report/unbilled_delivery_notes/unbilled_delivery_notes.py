@@ -130,9 +130,12 @@ def get_data(filters):
 	"""Get delivery note items data with billing information by matching actual sales invoice items"""
 	conditions = get_conditions(filters)
 	
-	# Query to get delivery note items with actual billed amounts from sales invoices
-	# This approach matches delivery note items directly with sales invoice items for accuracy
-	# Includes closed delivery notes to catch billing discrepancies
+	# Enhanced query to get delivery note items with actual billed amounts from sales invoices
+	# Improvements:
+	# 1. Handles delivery notes with ZERO sales invoice items (LEFT JOIN ensures all DN items are included)
+	# 2. Properly aggregates partial billing across multiple sales invoices
+	# 3. Adds customer validation to prevent incorrect linkages
+	# 4. Includes closed delivery notes to catch billing discrepancies
 	query = """
 		SELECT 
 			dn.name as delivery_note,
@@ -147,41 +150,43 @@ def get_data(filters):
 			dni.rate,
 			dni.amount,
 			IFNULL(dni.billed_amt, 0) as system_billed_amt,
-			IFNULL(SUM(
-				CASE 
-					WHEN si.docstatus = 1 AND si.is_return = 0
-					THEN sii.amount
-					WHEN si.docstatus = 1 AND si.is_return = 1
-					THEN -sii.amount
-					ELSE 0
-				END
-			), 0) as billed_amt
+			COALESCE(invoice_totals.billed_amt, 0) as billed_amt
 		FROM `tabDelivery Note` dn
 		INNER JOIN `tabDelivery Note Item` dni ON dn.name = dni.parent
-		LEFT JOIN `tabSales Invoice Item` sii ON (
-			sii.delivery_note = dn.name 
-			AND sii.dn_detail = dni.name
+		LEFT JOIN (
+			SELECT 
+				sii.delivery_note,
+				sii.dn_detail,
+				SUM(
+					CASE 
+						WHEN si.docstatus = 1 AND si.is_return = 0 AND si.customer = sii_dn.customer
+						THEN sii.amount
+						WHEN si.docstatus = 1 AND si.is_return = 1 AND si.customer = sii_dn.customer
+						THEN -sii.amount
+						ELSE 0
+					END
+				) as billed_amt
+			FROM `tabSales Invoice Item` sii
+			INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
+			INNER JOIN `tabDelivery Note` sii_dn ON sii.delivery_note = sii_dn.name
+			WHERE si.docstatus = 1
+			AND sii.delivery_note IS NOT NULL
+			AND sii.dn_detail IS NOT NULL
+			GROUP BY sii.delivery_note, sii.dn_detail
+		) invoice_totals ON (
+			invoice_totals.delivery_note = dn.name 
+			AND invoice_totals.dn_detail = dni.name
 		)
-		LEFT JOIN `tabSales Invoice` si ON sii.parent = si.name
 		WHERE dn.docstatus = 1
 		{conditions}
-		GROUP BY dn.name, dni.name
-		HAVING (dni.amount - IFNULL(SUM(
-			CASE 
-				WHEN si.docstatus = 1 AND si.is_return = 0
-				THEN sii.amount
-				WHEN si.docstatus = 1 AND si.is_return = 1
-				THEN -sii.amount
-				ELSE 0
-			END
-		), 0)) > 0.01
 		ORDER BY dn.posting_date DESC, dn.name, dni.idx
 	""".format(conditions=conditions)
 	
 	try:
 		data = frappe.db.sql(query, filters, as_dict=1)
 		
-		# Calculate unbilled amounts and percentages
+		# Filter and calculate unbilled amounts and percentages
+		unbilled_data = []
 		for row in data:
 			# Ensure numeric values are properly formatted
 			row.qty = flt(row.qty, 2)
@@ -206,8 +211,12 @@ def get_data(filters):
 			if row.unbilled_amt < 0:
 				row.unbilled_amt = 0.0
 				row.per_billed = 100.0
+			
+			# Only include items with unbilled amounts > 0.01 (to handle rounding)
+			if row.unbilled_amt > 0.01:
+				unbilled_data.append(row)
 		
-		return data
+		return unbilled_data
 		
 	except Exception as e:
 		frappe.log_error(f"Error in Unbilled Delivery Notes report: {str(e)}")
