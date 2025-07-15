@@ -4,45 +4,83 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import nowdate, flt, cint, now
-from datetime import datetime
 import json
 
 
 class DeliveryNoteBillingWizard(Document):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		# Virtual doctype - no database table
-		pass
+		# Initialize table fieldnames for virtual doctype
+		self._table_fieldnames = []
 
+	@staticmethod
+	def get_doc(doctype, name=None):
+		"""Return a default in-memory document for new virtual doctype forms."""
+		if name and name.startswith('new-'):
+			# Create a new in-memory document
+			doc = frappe.new_doc(doctype)
+			doc.name = name
+			return doc
+		else:
+			# If not a new doc, raise error (virtual doctypes should not be loaded from DB)
+			raise frappe.DoesNotExistError(f"Virtual DocType '{doctype}' does not support database queries.")
+
+	# Override load_from_db to prevent DB access
 	def load_from_db(self):
-		"""Load data for virtual doctype"""
-		# This method is called when the document is loaded
-		# We'll populate the fields with default values
-		if not self.get('company'):
-			# Set default company if user has access to only one
-			companies = frappe.get_all("Company", pluck="name")
-			if len(companies) == 1:
-				self.company = companies[0]
-		
-		if not self.get('from_date'):
-			self.from_date = frappe.utils.add_months(nowdate(), -1)
-		
-		if not self.get('to_date'):
-			self.to_date = nowdate()
-		
-		self.processing_status = "Draft"
-
-	def db_insert(self, *args, **kwargs):
-		"""Override to prevent database insert"""
-		pass
-
-	def db_update(self, *args, **kwargs):
-		"""Override to prevent database update"""
-		pass
+		"""Do nothing for virtual doctype."""
+		return
 
 	def delete(self):
 		"""Override to prevent database delete"""
 		pass
+
+	@property
+	def unbilled_items(self):
+		"""Get unbilled items from JSON data"""
+		if self.unbilled_items_data:
+			return json.loads(self.unbilled_items_data)
+		return []
+
+	@unbilled_items.setter
+	def unbilled_items(self, value):
+		"""Set unbilled items as JSON data"""
+		self.unbilled_items_data = json.dumps(value) if value else ""
+
+	@property
+	def invoice_matches(self):
+		"""Get invoice matches from JSON data"""
+		if self.invoice_matches_data:
+			return json.loads(self.invoice_matches_data)
+		return []
+
+	@invoice_matches.setter
+	def invoice_matches(self, value):
+		"""Set invoice matches as JSON data"""
+		self.invoice_matches_data = json.dumps(value) if value else ""
+
+	@property
+	def assignments(self):
+		"""Get assignments from JSON data"""
+		if self.assignments_data:
+			return json.loads(self.assignments_data)
+		return []
+
+	@assignments.setter
+	def assignments(self, value):
+		"""Set assignments as JSON data"""
+		self.assignments_data = json.dumps(value) if value else ""
+
+	@property
+	def processing_results(self):
+		"""Get processing results from JSON data"""
+		if self.processing_results_data:
+			return json.loads(self.processing_results_data)
+		return []
+
+	@processing_results.setter
+	def processing_results(self, value):
+		"""Set processing results as JSON data"""
+		self.processing_results_data = json.dumps(value) if value else ""
 
 	@frappe.whitelist()
 	def load_unbilled_items(self):
@@ -50,19 +88,14 @@ class DeliveryNoteBillingWizard(Document):
 		if not self.company:
 			frappe.throw("Company is required")
 		
-		# Clear existing data
-		self.unbilled_items = []
-		self.invoice_matches = []
-		self.assignments = []
-		self.processing_results = []
-		
 		# Get unbilled items using the same logic as the report
 		unbilled_data = self.get_unbilled_delivery_notes()
 		
-		# Populate unbilled_items table
+		# Store data as JSON
+		items = []
 		for item in unbilled_data:
 			if item.get('delivery_note') and item.get('item_code'):  # Skip summary rows
-				self.append('unbilled_items', {
+				items.append({
 					'delivery_note': item.get('delivery_note'),
 					'item_code': item.get('item_code'),
 					'item_name': item.get('item_name'),
@@ -70,65 +103,69 @@ class DeliveryNoteBillingWizard(Document):
 					'rate': item.get('rate'),
 					'amount': item.get('amount'),
 					'uom': item.get('uom'),
-					'posting_date': item.get('posting_date'),
+					'posting_date': str(item.get('posting_date')) if item.get('posting_date') else '',
 					'customer': item.get('customer'),
-					'selected': 0,  # Default unselected
+					'selected': False,  # Default unselected
 					'billing_variance': item.get('billing_variance', 0),
 					'actual_billed_qty': item.get('actual_billed_qty', 0),
 					'outstanding_qty': item.get('outstanding_qty', 0)
 				})
 		
+		self.unbilled_items = items
+		self.total_items_found = len(items)
+		self.processing_status = "Items Loaded"
+		self.wizard_tab = "1. Load Items"
 		self.update_totals()
-		frappe.msgprint(f"Loaded {len(self.unbilled_items)} unbilled items")
-		return True
+		self.update_html_displays()
+		
+		frappe.msgprint(f"Loaded {len(items)} unbilled items")
+		return {"status": "success", "count": len(items)}
 
 	@frappe.whitelist()
 	def find_invoice_matches(self):
 		"""Find potential sales invoice matches for selected items"""
-		if not self.unbilled_items:
+		items = self.unbilled_items
+		if not items:
 			frappe.throw("Please load unbilled items first")
 		
-		selected_items = [item for item in self.unbilled_items if item.selected]
+		selected_items = [item for item in items if item.get('selected')]
 		if not selected_items:
 			frappe.throw("Please select at least one item to find matches")
 		
-		self.invoice_matches = []
-		
+		matches = []
 		for item in selected_items:
-			# Find potential matches in sales invoices
-			matches = self.find_matches_for_item(item)
-			for match in matches:
-				self.append('invoice_matches', match)
+			item_matches = self.find_matches_for_item(item)
+			matches.extend(item_matches)
 		
-		frappe.msgprint(f"Found {len(self.invoice_matches)} potential matches")
-		return True
+		self.invoice_matches = matches
+		self.processing_status = "Matches Found"
+		self.wizard_tab = "2. Find Matches"
+		self.update_html_displays()
+		
+		frappe.msgprint(f"Found {len(matches)} potential matches")
+		return {"status": "success", "count": len(matches)}
 
 	@frappe.whitelist()
 	def create_assignments(self):
 		"""Create billing assignments based on matches"""
-		if not self.invoice_matches:
+		matches = self.invoice_matches
+		if not matches:
 			frappe.throw("Please find invoice matches first")
 		
-		self.assignments = []
-		
-		# Group matches by delivery note item
-		item_matches = {}
-		for match in self.invoice_matches:
-			key = f"{match.sales_invoice}-{match.item_code}"
-			if key not in item_matches:
-				item_matches[key] = []
-			item_matches[key].append(match)
+		assignments = []
+		items = self.unbilled_items
 		
 		# Create automatic assignments for high-confidence matches
-		for item in self.unbilled_items:
-			if not item.selected:
+		for item in items:
+			if not item.get('selected'):
 				continue
 			
-			item_key = f"{item.delivery_note}-{item.item_code}"
-			remaining_qty = item.outstanding_qty or item.qty
+			remaining_qty = item.get('outstanding_qty') or item.get('qty', 0)
+			item_key = f"{item['delivery_note']}-{item['item_code']}"
 			
 			# Find best matches for this item
-			best_matches = self.get_best_matches_for_item(item)
+			best_matches = [m for m in matches if m.get('item_code') == item['item_code']]
+			best_matches.sort(key=lambda x: x.get('compatibility_score', 0), reverse=True)
 			
 			for match in best_matches:
 				if remaining_qty <= 0:
@@ -140,34 +177,40 @@ class DeliveryNoteBillingWizard(Document):
 						'delivery_note_item': item_key,
 						'sales_invoice_item': f"{match.get('sales_invoice')}-{match.get('item_code')}",
 						'qty_to_assign': assign_qty,
-						'rate_variance': abs(flt(item.rate) - flt(match.get('rate', 0))),
-						'amount_to_assign': assign_qty * flt(item.rate),
+						'rate_variance': abs(flt(item.get('rate', 0)) - flt(match.get('rate', 0))),
+						'amount_to_assign': assign_qty * flt(item.get('rate', 0)),
 						'assignment_type': 'Automatic' if match.get('compatibility_score', 0) >= 90 else 'Manual',
 						'confidence_level': self.get_confidence_level(match.get('compatibility_score', 0)),
 						'notes': f"Auto-assigned based on {match.get('status', 'Unknown')} match"
 					}
-					self.append('assignments', assignment)
+					assignments.append(assignment)
 					remaining_qty -= assign_qty
 		
-		frappe.msgprint(f"Created {len(self.assignments)} billing assignments")
-		return True
+		self.assignments = assignments
+		self.processing_status = "Assignments Created"
+		self.wizard_tab = "3. Create Assignments"
+		self.update_html_displays()
+		
+		frappe.msgprint(f"Created {len(assignments)} billing assignments")
+		return {"status": "success", "count": len(assignments)}
 
 	@frappe.whitelist()
 	def process_assignments(self):
 		"""Process the billing assignments and update delivery notes"""
-		if not self.assignments:
+		assignments = self.assignments
+		if not assignments:
 			frappe.throw("No assignments to process")
 		
 		self.processing_status = "Processing"
-		self.processing_results = []
+		results = []
 		
 		processed_count = 0
 		error_count = 0
 		
-		for assignment in self.assignments:
+		for assignment in assignments:
 			try:
 				result = self.process_single_assignment(assignment)
-				self.append('processing_results', result)
+				results.append(result)
 				
 				if result.get('status') == 'Success':
 					processed_count += 1
@@ -184,13 +227,273 @@ class DeliveryNoteBillingWizard(Document):
 					'error_message': str(e),
 					'process_time': now()
 				}
-				self.append('processing_results', error_result)
+				results.append(error_result)
 				error_count += 1
 		
+		self.processing_results = results
 		self.processing_status = "Completed" if error_count == 0 else "Failed"
+		self.wizard_tab = "4. Process Results"
+		self.update_html_displays()
 		
 		frappe.msgprint(f"Processing completed. Success: {processed_count}, Errors: {error_count}")
-		return True
+		return {"status": "success", "processed": processed_count, "errors": error_count}
+
+	@frappe.whitelist()
+	def update_selection(self, item_index, selected):
+		"""Update item selection status"""
+		items = self.unbilled_items
+		if 0 <= item_index < len(items):
+			items[item_index]['selected'] = selected
+			self.unbilled_items = items
+			self.update_totals()
+			self.update_html_displays()
+		return {"status": "success"}
+
+	@frappe.whitelist()
+	def select_all_items(self, select_all=True):
+		"""Select or deselect all items"""
+		items = self.unbilled_items
+		for item in items:
+			item['selected'] = select_all
+		self.unbilled_items = items
+		self.update_totals()
+		self.update_html_displays()
+		return {"status": "success"}
+
+	def update_totals(self):
+		"""Update summary totals"""
+		items = self.unbilled_items
+		selected_items = [item for item in items if item.get('selected')]
+		self.total_selected_items = len(selected_items)
+		self.total_selected_amount = sum(flt(item.get('amount', 0)) for item in selected_items)
+
+	def update_html_displays(self):
+		"""Update HTML displays for all tables"""
+		try:
+			self.unbilled_items_html = self.render_unbilled_items_table()
+			self.invoice_matches_html = self.render_invoice_matches_table()
+			self.assignments_html = self.render_assignments_table()
+			self.processing_results_html = self.render_processing_results_table()
+		except Exception:
+			# If there's an error during HTML rendering, set default messages
+			self.unbilled_items_html = "<p>Click 'Load Unbilled Items' to begin.</p>"
+			self.invoice_matches_html = "<p>No matches found yet.</p>"
+			self.assignments_html = "<p>No assignments created yet.</p>"
+			self.processing_results_html = "<p>No processing results yet.</p>"
+
+	def render_unbilled_items_table(self):
+		"""Render unbilled items as HTML table"""
+		items = self.unbilled_items
+		if not items:
+			return "<p>No items loaded. Click 'Load Unbilled Items' to begin.</p>"
+		
+		html = """
+		<div class="table-responsive">
+			<table class="table table-bordered table-striped">
+				<thead>
+					<tr>
+						<th><input type="checkbox" id="select-all-items"></th>
+						<th>Delivery Note</th>
+						<th>Item Code</th>
+						<th>Item Name</th>
+						<th>Qty</th>
+						<th>Rate</th>
+						<th>Amount</th>
+						<th>Outstanding Qty</th>
+						<th>Billing Variance</th>
+					</tr>
+				</thead>
+				<tbody>
+		"""
+		
+		for i, item in enumerate(items):
+			variance_class = ""
+			if abs(flt(item.get('billing_variance', 0))) > 0:
+				variance_class = "table-warning"
+			
+			checked = "checked" if item.get('selected') else ""
+			
+			html += f"""
+				<tr class="{variance_class}">
+					<td><input type="checkbox" {checked} onchange="update_item_selection({i}, this.checked)"></td>
+					<td>{item.get('delivery_note', '')}</td>
+					<td>{item.get('item_code', '')}</td>
+					<td>{item.get('item_name', '')}</td>
+					<td>{item.get('qty', 0)}</td>
+					<td>{frappe.format(item.get('rate', 0), {'fieldtype': 'Currency'})}</td>
+					<td>{frappe.format(item.get('amount', 0), {'fieldtype': 'Currency'})}</td>
+					<td>{item.get('outstanding_qty', 0)}</td>
+					<td>{frappe.format(item.get('billing_variance', 0), {'fieldtype': 'Currency'})}</td>
+				</tr>
+			"""
+		
+		html += """
+				</tbody>
+			</table>
+		</div>
+		"""
+		
+		return html
+
+	def render_invoice_matches_table(self):
+		"""Render invoice matches as HTML table"""
+		matches = self.invoice_matches
+		if not matches:
+			return "<p>No matches found. Select items and click 'Find Invoice Matches'.</p>"
+		
+		html = """
+		<div class="table-responsive">
+			<table class="table table-bordered table-striped">
+				<thead>
+					<tr>
+						<th>Sales Invoice</th>
+						<th>Item Code</th>
+						<th>Available Qty</th>
+						<th>Rate</th>
+						<th>Compatibility Score</th>
+						<th>Match Status</th>
+					</tr>
+				</thead>
+				<tbody>
+		"""
+		
+		for match in matches:
+			status_class = ""
+			if match.get('status') == 'Perfect Match':
+				status_class = "table-success"
+			elif match.get('status') == 'Good Match':
+				status_class = "table-info"
+			elif match.get('status') == 'Partial Match':
+				status_class = "table-warning"
+			else:
+				status_class = "table-danger"
+			
+			html += f"""
+				<tr class="{status_class}">
+					<td>{match.get('sales_invoice', '')}</td>
+					<td>{match.get('item_code', '')}</td>
+					<td>{match.get('available_qty', 0)}</td>
+					<td>{frappe.format(match.get('rate', 0), {'fieldtype': 'Currency'})}</td>
+					<td>{match.get('compatibility_score', 0)}%</td>
+					<td>{match.get('status', '')}</td>
+				</tr>
+			"""
+		
+		html += """
+				</tbody>
+			</table>
+		</div>
+		"""
+		
+		return html
+
+	def render_assignments_table(self):
+		"""Render assignments as HTML table"""
+		assignments = self.assignments
+		if not assignments:
+			return "<p>No assignments created. Create assignments from matches.</p>"
+		
+		html = """
+		<div class="table-responsive">
+			<table class="table table-bordered table-striped">
+				<thead>
+					<tr>
+						<th>DN Item</th>
+						<th>SI Item</th>
+						<th>Qty to Assign</th>
+						<th>Amount</th>
+						<th>Type</th>
+						<th>Confidence</th>
+						<th>Notes</th>
+					</tr>
+				</thead>
+				<tbody>
+		"""
+		
+		for assignment in assignments:
+			confidence_class = ""
+			if assignment.get('confidence_level') == 'High':
+				confidence_class = "table-success"
+			elif assignment.get('confidence_level') == 'Medium':
+				confidence_class = "table-warning"
+			else:
+				confidence_class = "table-danger"
+			
+			html += f"""
+				<tr class="{confidence_class}">
+					<td>{assignment.get('delivery_note_item', '')}</td>
+					<td>{assignment.get('sales_invoice_item', '')}</td>
+					<td>{assignment.get('qty_to_assign', 0)}</td>
+					<td>{frappe.format(assignment.get('amount_to_assign', 0), {'fieldtype': 'Currency'})}</td>
+					<td>{assignment.get('assignment_type', '')}</td>
+					<td>{assignment.get('confidence_level', '')}</td>
+					<td>{assignment.get('notes', '')}</td>
+				</tr>
+			"""
+		
+		html += """
+				</tbody>
+			</table>
+		</div>
+		"""
+		
+		return html
+
+	def render_processing_results_table(self):
+		"""Render processing results as HTML table"""
+		results = self.processing_results
+		if not results:
+			return "<p>No processing results yet. Process assignments to see results.</p>"
+		
+		html = """
+		<div class="table-responsive">
+			<table class="table table-bordered table-striped">
+				<thead>
+					<tr>
+						<th>Delivery Note</th>
+						<th>Sales Invoice</th>
+						<th>Item Code</th>
+						<th>Processed Qty</th>
+						<th>Status</th>
+						<th>Message</th>
+						<th>Process Time</th>
+					</tr>
+				</thead>
+				<tbody>
+		"""
+		
+		for result in results:
+			status_class = ""
+			if result.get('status') == 'Success':
+				status_class = "table-success"
+			elif result.get('status') == 'Failed':
+				status_class = "table-danger"
+			elif result.get('status') == 'Warning':
+				status_class = "table-warning"
+			else:
+				status_class = "table-secondary"
+			
+			message = result.get('success_message') or result.get('error_message', '')
+			
+			html += f"""
+				<tr class="{status_class}">
+					<td>{result.get('delivery_note', '')}</td>
+					<td>{result.get('sales_invoice', '')}</td>
+					<td>{result.get('item_code', '')}</td>
+					<td>{result.get('processed_qty', 0)}</td>
+					<td>{result.get('status', '')}</td>
+					<td>{message}</td>
+					<td>{result.get('process_time', '')}</td>
+				</tr>
+			"""
+		
+		html += """
+				</tbody>
+			</table>
+		</div>
+		"""
+		
+		return html
 
 	def get_unbilled_delivery_notes(self):
 		"""Get unbilled delivery notes using the same logic as the report"""
@@ -259,7 +562,6 @@ class DeliveryNoteBillingWizard(Document):
 
 	def find_matches_for_item(self, item):
 		"""Find potential sales invoice matches for a delivery note item"""
-		# Look for sales invoices with matching item and customer
 		query = """
 			SELECT 
 				si.name as sales_invoice,
@@ -293,8 +595,8 @@ class DeliveryNoteBillingWizard(Document):
 		
 		results = frappe.db.sql(query, {
 			'company': self.company,
-			'customer': item.customer,
-			'item_code': item.item_code
+			'customer': item.get('customer'),
+			'item_code': item.get('item_code')
 		}, as_dict=True)
 		
 		matches = []
@@ -310,7 +612,7 @@ class DeliveryNoteBillingWizard(Document):
 				'available_qty': result.available_qty,
 				'rate': result.rate,
 				'amount': result.amount,
-				'posting_date': result.posting_date,
+				'posting_date': str(result.posting_date) if result.posting_date else '',
 				'customer': result.customer,
 				'already_linked_qty': result.already_linked_qty,
 				'compatibility_score': score,
@@ -324,16 +626,16 @@ class DeliveryNoteBillingWizard(Document):
 		score = 0
 		
 		# Item code match (40 points)
-		if dn_item.item_code == si_item.item_code:
+		if dn_item.get('item_code') == si_item.get('item_code'):
 			score += 40
 		
 		# Customer match (30 points)
-		if dn_item.customer == si_item.customer:
+		if dn_item.get('customer') == si_item.get('customer'):
 			score += 30
 		
 		# Rate similarity (20 points)
-		dn_rate = flt(dn_item.rate)
-		si_rate = flt(si_item.rate)
+		dn_rate = flt(dn_item.get('rate', 0))
+		si_rate = flt(si_item.get('rate', 0))
 		if dn_rate > 0 and si_rate > 0:
 			rate_diff = abs(dn_rate - si_rate) / max(dn_rate, si_rate)
 			if rate_diff <= 0.01:  # 1% tolerance
@@ -344,8 +646,8 @@ class DeliveryNoteBillingWizard(Document):
 				score += 10
 		
 		# Quantity compatibility (10 points)
-		dn_qty = flt(dn_item.outstanding_qty or dn_item.qty)
-		si_qty = flt(si_item.available_qty)
+		dn_qty = flt(dn_item.get('outstanding_qty') or dn_item.get('qty', 0))
+		si_qty = flt(si_item.get('available_qty', 0))
 		if si_qty >= dn_qty:
 			score += 10
 		elif si_qty >= dn_qty * 0.8:  # 80% of required qty
@@ -375,22 +677,12 @@ class DeliveryNoteBillingWizard(Document):
 		else:
 			return "Low"
 
-	def get_best_matches_for_item(self, item):
-		"""Get best matches for a delivery note item"""
-		item_key = f"{item.delivery_note}-{item.item_code}"
-		matches = [m for m in self.invoice_matches if m.item_code == item.item_code]
-		
-		# Sort by compatibility score descending
-		matches.sort(key=lambda x: x.get('compatibility_score', 0), reverse=True)
-		
-		return matches
-
 	def process_single_assignment(self, assignment):
 		"""Process a single billing assignment"""
 		try:
 			# Parse the assignment details
-			dn_item_parts = assignment.delivery_note_item.split('-', 1)
-			si_item_parts = assignment.sales_invoice_item.split('-', 1)
+			dn_item_parts = assignment.get('delivery_note_item', '').split('-', 1)
+			si_item_parts = assignment.get('sales_invoice_item', '').split('-', 1)
 			
 			delivery_note = dn_item_parts[0] if len(dn_item_parts) > 0 else ''
 			sales_invoice = si_item_parts[0] if len(si_item_parts) > 0 else ''
@@ -426,9 +718,9 @@ class DeliveryNoteBillingWizard(Document):
 				'delivery_note': delivery_note,
 				'sales_invoice': sales_invoice,
 				'item_code': item_code,
-				'processed_qty': assignment.qty_to_assign,
+				'processed_qty': assignment.get('qty_to_assign', 0),
 				'status': 'Success',
-				'success_message': f"Successfully linked {assignment.qty_to_assign} qty",
+				'success_message': f"Successfully linked {assignment.get('qty_to_assign', 0)} qty",
 				'process_time': now()
 			}
 			

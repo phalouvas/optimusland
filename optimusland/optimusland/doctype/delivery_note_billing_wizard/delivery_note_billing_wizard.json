@@ -1,29 +1,43 @@
 {
  "actions": [],
- "allow_rename": 1,
+ "allow_rename": 0,
  "creation": "2025-01-15 10:00:00.000000",
  "doctype": "DocType",
- "editable_grid": 1,
+ "editable_grid": 0,
  "engine": "InnoDB",
  "field_order": [
+  "wizard_tab",
   "company",
   "customer",
   "from_date",
   "to_date",
   "column_break_5",
+  "total_items_found",
   "total_selected_items",
   "total_selected_amount",
   "processing_status",
-  "section_break_9",
-  "unbilled_items",
-  "section_break_11",
-  "invoice_matches",
-  "section_break_13",
-  "assignments",
-  "section_break_15",
-  "processing_results"
+  "section_break_items",
+  "unbilled_items_html",
+  "section_break_matches",
+  "invoice_matches_html",
+  "section_break_assignments",
+  "assignments_html",
+  "section_break_results",
+  "processing_results_html",
+  "section_break_data",
+  "unbilled_items_data",
+  "invoice_matches_data",
+  "assignments_data",
+  "processing_results_data"
  ],
  "fields": [
+  {
+   "fieldname": "wizard_tab",
+   "fieldtype": "Select",
+   "label": "Wizard Step",
+   "options": "1. Load Items\n2. Find Matches\n3. Create Assignments\n4. Process Results",
+   "default": "1. Load Items"
+  },
   {
    "fieldname": "company",
    "fieldtype": "Link",
@@ -52,6 +66,12 @@
    "fieldtype": "Column Break"
   },
   {
+   "fieldname": "total_items_found",
+   "fieldtype": "Int",
+   "label": "Total Items Found",
+   "read_only": 1
+  },
+  {
    "fieldname": "total_selected_items",
    "fieldtype": "Int",
    "label": "Total Selected Items",
@@ -67,56 +87,88 @@
    "fieldname": "processing_status",
    "fieldtype": "Select",
    "label": "Processing Status",
-   "options": "Draft\nReady to Process\nProcessing\nCompleted\nFailed",
-   "read_only": 1
+   "options": "Draft\nItems Loaded\nMatches Found\nAssignments Created\nProcessing\nCompleted\nFailed",
+   "read_only": 1,
+   "default": "Draft"
   },
   {
-   "fieldname": "section_break_9",
+   "fieldname": "section_break_items",
    "fieldtype": "Section Break",
-   "label": "Unbilled Delivery Note Items"
+   "label": "Unbilled Delivery Note Items",
+   "depends_on": "eval:doc.wizard_tab=='1. Load Items'"
   },
   {
-   "fieldname": "unbilled_items",
-   "fieldtype": "Table",
-   "label": "Unbilled Items",
-   "options": "Delivery Note Billing Wizard Item"
+   "fieldname": "unbilled_items_html",
+   "fieldtype": "HTML",
+   "label": "Unbilled Items"
   },
   {
-   "fieldname": "section_break_11",
+   "fieldname": "section_break_matches",
+   "fieldtype": "Section Break", 
+   "label": "Potential Invoice Matches",
+   "depends_on": "eval:doc.wizard_tab=='2. Find Matches'"
+  },
+  {
+   "fieldname": "invoice_matches_html",
+   "fieldtype": "HTML",
+   "label": "Invoice Matches"
+  },
+  {
+   "fieldname": "section_break_assignments",
    "fieldtype": "Section Break",
-   "label": "Potential Invoice Matches"
+   "label": "Billing Assignments",
+   "depends_on": "eval:doc.wizard_tab=='3. Create Assignments'"
   },
   {
-   "fieldname": "invoice_matches",
-   "fieldtype": "Table",
-   "label": "Invoice Matches",
-   "options": "Delivery Note Billing Wizard Match"
+   "fieldname": "assignments_html",
+   "fieldtype": "HTML",
+   "label": "Assignments"
   },
   {
-   "fieldname": "section_break_13",
+   "fieldname": "section_break_results",
    "fieldtype": "Section Break",
-   "label": "Billing Assignments"
+   "label": "Processing Results",
+   "depends_on": "eval:doc.wizard_tab=='4. Process Results'"
   },
   {
-   "fieldname": "assignments",
-   "fieldtype": "Table",
-   "label": "Assignments",
-   "options": "Delivery Note Billing Wizard Assignment"
-  },
-  {
-   "fieldname": "section_break_15",
-   "fieldtype": "Section Break",
+   "fieldname": "processing_results_html",
+   "fieldtype": "HTML",
    "label": "Processing Results"
   },
   {
-   "fieldname": "processing_results",
-   "fieldtype": "Table",
-   "label": "Processing Results",
-   "options": "Delivery Note Billing Wizard Result"
+   "fieldname": "section_break_data",
+   "fieldtype": "Section Break",
+   "label": "Data Storage",
+   "hidden": 1
+  },
+  {
+   "fieldname": "unbilled_items_data",
+   "fieldtype": "Long Text",
+   "label": "Unbilled Items Data",
+   "hidden": 1
+  },
+  {
+   "fieldname": "invoice_matches_data",
+   "fieldtype": "Long Text",
+   "label": "Invoice Matches Data",
+   "hidden": 1
+  },
+  {
+   "fieldname": "assignments_data",
+   "fieldtype": "Long Text",
+   "label": "Assignments Data",
+   "hidden": 1
+  },
+  {
+   "fieldname": "processing_results_data",
+   "fieldtype": "Long Text",
+   "label": "Processing Results Data",
+   "hidden": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_virtual": 1,
+ "issingle": 1,
  "links": [],
  "modified": "2025-01-15 10:00:00.000000",
  "modified_by": "Administrator",
