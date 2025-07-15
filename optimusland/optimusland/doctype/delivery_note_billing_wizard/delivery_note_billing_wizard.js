@@ -16,61 +16,6 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 			frm.set_value('to_date', frappe.datetime.get_today());
 		}
 		
-		// Add workflow action buttons
-		frm.add_custom_button(__('Load Unbilled Items'), function() {
-			frm.call('load_unbilled_items').then(r => {
-				if (r.message && r.message.status === 'success') {
-					frm.refresh();
-					frm.set_value('wizard_tab', '1. Load Items');
-				}
-			});
-		}, __('Wizard Actions'));
-		
-		frm.add_custom_button(__('Find Invoice Matches'), function() {
-			frm.call('find_invoice_matches').then(r => {
-				if (r.message && r.message.status === 'success') {
-					frm.refresh();
-					frm.set_value('wizard_tab', '2. Find Matches');
-				}
-			});
-		}, __('Wizard Actions'));
-		
-		frm.add_custom_button(__('Create Assignments'), function() {
-			frm.call('create_assignments').then(r => {
-				if (r.message && r.message.status === 'success') {
-					frm.refresh();
-					frm.set_value('wizard_tab', '3. Create Assignments');
-				}
-			});
-		}, __('Wizard Actions'));
-		
-		frm.add_custom_button(__('Process Assignments'), function() {
-			frappe.confirm(
-				__('This will update delivery note references in sales invoices. Are you sure?'),
-				function() {
-					frm.call('process_assignments').then(r => {
-						if (r.message && r.message.status === 'success') {
-							frm.refresh();
-							frm.set_value('wizard_tab', '4. Process Results');
-						}
-					});
-				}
-			);
-		}, __('Wizard Actions'));
-		
-		// Add selection helper buttons
-		frm.add_custom_button(__('Select All'), function() {
-			frm.call('select_all_items', {select_all: true}).then(r => {
-				frm.refresh();
-			});
-		}, __('Selection'));
-		
-		frm.add_custom_button(__('Deselect All'), function() {
-			frm.call('select_all_items', {select_all: false}).then(r => {
-				frm.refresh();
-			});
-		}, __('Selection'));
-		
 		// Add JavaScript functions for HTML interactions
 		window.update_item_selection = function(item_index, selected) {
 			frm.call('update_selection', {
@@ -123,53 +68,88 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 	},
 	
 	refresh: function(frm) {
-		// Update button states based on processing status
-		frm.page.btn_secondary.find('.btn-default').removeClass('btn-primary');
+		// Clear existing custom buttons to avoid duplicates
+		frm.clear_custom_buttons();
 		
-		// Highlight next logical step
+		// Add buttons based on current processing status
 		switch(frm.doc.processing_status) {
 			case 'Draft':
-				frm.page.btn_secondary.find('.btn-default:contains("Load Unbilled Items")').addClass('btn-primary');
+				frm.add_custom_button(__('Load Unbilled Items'), function() {
+					frm.call('load_unbilled_items').then(r => {
+						if (r.message && r.message.status === 'success') {
+							frm.refresh();
+							frm.set_value('wizard_tab', '1. Load Items');
+						}
+					});
+				}, __('Wizard Actions'));
 				break;
 			case 'Items Loaded':
-				frm.page.btn_secondary.find('.btn-default:contains("Find Invoice Matches")').addClass('btn-primary');
+				frm.add_custom_button(__('Find Invoice Matches'), function() {
+					frm.call('find_invoice_matches').then(r => {
+						if (r.message && r.message.status === 'success') {
+							frm.refresh();
+							frm.set_value('wizard_tab', '2. Find Matches');
+						}
+					});
+				}, __('Wizard Actions'));
 				break;
 			case 'Matches Found':
-				frm.page.btn_secondary.find('.btn-default:contains("Create Assignments")').addClass('btn-primary');
+				frm.add_custom_button(__('Create Assignments'), function() {
+					frm.call('create_assignments').then(r => {
+						if (r.message && r.message.status === 'success') {
+							frm.refresh();
+							frm.set_value('wizard_tab', '3. Create Assignments');
+						}
+					});
+				}, __('Wizard Actions'));
 				break;
 			case 'Assignments Created':
-				frm.page.btn_secondary.find('.btn-default:contains("Process Assignments")').addClass('btn-primary');
+				frm.add_custom_button(__('Process Assignments'), function() {
+					frappe.confirm(
+						__('This will update delivery note references in sales invoices. Are you sure?'),
+						function() {
+							frm.call('process_assignments').then(r => {
+								if (r.message && r.message.status === 'success') {
+									frm.refresh();
+									frm.set_value('wizard_tab', '4. Process Results');
+								}
+							});
+						}
+					);
+				}, __('Wizard Actions'));
 				break;
 		}
 		
-		// Update status indicator
-		if (frm.doc.processing_status) {
-			let indicator_class = 'blue';
-			switch(frm.doc.processing_status) {
-				case 'Completed':
-					indicator_class = 'green';
-					break;
-				case 'Failed':
-					indicator_class = 'red';
-					break;
-				case 'Processing':
-					indicator_class = 'orange';
-					break;
-				case 'Items Loaded':
-				case 'Matches Found':
-				case 'Assignments Created':
-					indicator_class = 'blue';
-					break;
-			}
-			frm.dashboard.set_indicator(__(frm.doc.processing_status), indicator_class);
+		// Always show selection helper buttons if items are loaded
+		if (frm.doc.processing_status !== 'Draft' && frm.doc.total_items_found > 0) {
+			frm.add_custom_button(__('Select All'), function() {
+				frm.call('select_all_items', {select_all: true}).then(r => {
+					frm.refresh();
+				});
+			}, __('Selection'));
+			
+			frm.add_custom_button(__('Deselect All'), function() {
+				frm.call('select_all_items', {select_all: false}).then(r => {
+					frm.refresh();
+				});
+			}, __('Selection'));
 		}
 		
-		// Show workflow progress
-		if (frm.doc.total_items_found) {
-			frm.dashboard.add_indicator(__('Items Found: {0}', [frm.doc.total_items_found]), 'blue');
-		}
-		if (frm.doc.total_selected_items) {
-			frm.dashboard.add_indicator(__('Selected: {0}', [frm.doc.total_selected_items]), 'green');
+		// Show status in page title for virtual doctypes (no dashboard)
+		if (frm.doc.processing_status) {
+			let status_text = frm.doc.processing_status;
+			if (frm.doc.total_items_found) {
+				status_text += ` (${frm.doc.total_items_found} items found`;
+				if (frm.doc.total_selected_items) {
+					status_text += `, ${frm.doc.total_selected_items} selected`;
+				}
+				status_text += ')';
+			}
+			
+			// Set page title subtitle to show status
+			if (frm.page && frm.page.set_title_sub) {
+				frm.page.set_title_sub(status_text);
+			}
 		}
 	},
 	
