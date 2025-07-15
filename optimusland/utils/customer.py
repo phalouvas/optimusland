@@ -30,8 +30,6 @@ def match_all_delivery_notes_to_invoices(customer_name: str):
 
     for delivery_note_item in delivery_note_items:
 
-        if delivery_note_item.get("parent") == "MAT-DN-2025-00355":
-            pass
         matching_invoice_items = [
             sii for sii in sales_invoice_items
             if sii.get("item_code") == delivery_note_item.get("item_code")
@@ -105,6 +103,7 @@ def match_all_delivery_notes_to_invoices(customer_name: str):
         else:
             frappe.db.set_value("Delivery Note", delivery_note, "status", "To Bill")
     
+    frappe.db.commit()
     return f"Delivery Note status updated successfully."
 
 def close_all_zero_delivery_notes(customer_name: str):
