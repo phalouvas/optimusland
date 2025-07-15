@@ -12,6 +12,18 @@ class DeliveryNoteBillingWizard(Document):
 		super().__init__(*args, **kwargs)
 		# Initialize table fieldnames for virtual doctype
 		self._table_fieldnames = []
+		
+		# Set required attributes for virtual doctype
+		if not hasattr(self, 'modified'):
+			self.modified = now()
+		if not hasattr(self, '_original_modified'):
+			self._original_modified = now()
+		if not hasattr(self, 'creation'):
+			self.creation = now()
+		if not hasattr(self, 'owner'):
+			self.owner = frappe.session.user
+		if not hasattr(self, 'modified_by'):
+			self.modified_by = frappe.session.user
 
 	@staticmethod
 	def get_doc(doctype, name=None):
@@ -22,13 +34,19 @@ class DeliveryNoteBillingWizard(Document):
 			doc.name = name
 			return doc
 		else:
-			# If not a new doc, raise error (virtual doctypes should not be loaded from DB)
-			raise frappe.DoesNotExistError(f"Virtual DocType '{doctype}' does not support database queries.")
+			# For single doctypes, always return the singleton instance
+			doc = frappe.new_doc(doctype)
+			doc.name = doctype
+			return doc
 
 	# Override load_from_db to prevent DB access
 	def load_from_db(self):
 		"""Do nothing for virtual doctype."""
 		return
+
+	def check_if_latest(self):
+		"""Override to prevent version check for virtual doctype"""
+		pass
 
 	def delete(self):
 		"""Override to prevent database delete"""
