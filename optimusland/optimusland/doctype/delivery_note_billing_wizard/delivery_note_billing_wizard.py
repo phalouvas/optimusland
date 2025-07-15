@@ -134,10 +134,10 @@ class DeliveryNoteBillingWizard(Document):
 		self.processing_status = "Items Loaded"
 		self.wizard_tab = "1. Load Items"
 		self.update_totals()
-		self.update_html_displays()
+		html_displays = self.update_html_displays()
 		
 		frappe.msgprint(f"Loaded {len(items)} unbilled items")
-		return {"status": "success", "count": len(items)}
+		return {**{"status": "success", "count": len(items)}, **html_displays}
 
 	@frappe.whitelist()
 	def find_invoice_matches(self):
@@ -158,10 +158,10 @@ class DeliveryNoteBillingWizard(Document):
 		self.invoice_matches = matches
 		self.processing_status = "Matches Found"
 		self.wizard_tab = "2. Find Matches"
-		self.update_html_displays()
+		html_displays = self.update_html_displays()
 		
 		frappe.msgprint(f"Found {len(matches)} potential matches")
-		return {"status": "success", "count": len(matches)}
+		return {**{"status": "success", "count": len(matches)}, **html_displays}
 
 	@frappe.whitelist()
 	def create_assignments(self):
@@ -207,10 +207,10 @@ class DeliveryNoteBillingWizard(Document):
 		self.assignments = assignments
 		self.processing_status = "Assignments Created"
 		self.wizard_tab = "3. Create Assignments"
-		self.update_html_displays()
+		html_displays = self.update_html_displays()
 		
 		frappe.msgprint(f"Created {len(assignments)} billing assignments")
-		return {"status": "success", "count": len(assignments)}
+		return {**{"status": "success", "count": len(assignments)}, **html_displays}
 
 	@frappe.whitelist()
 	def process_assignments(self):
@@ -251,10 +251,10 @@ class DeliveryNoteBillingWizard(Document):
 		self.processing_results = results
 		self.processing_status = "Completed" if error_count == 0 else "Failed"
 		self.wizard_tab = "4. Process Results"
-		self.update_html_displays()
+		html_displays = self.update_html_displays()
 		
 		frappe.msgprint(f"Processing completed. Success: {processed_count}, Errors: {error_count}")
-		return {"status": "success", "processed": processed_count, "errors": error_count}
+		return {**{"status": "success", "processed": processed_count, "errors": error_count}, **html_displays}
 
 	@frappe.whitelist()
 	def update_selection(self, item_index, selected):
@@ -264,8 +264,8 @@ class DeliveryNoteBillingWizard(Document):
 			items[item_index]['selected'] = selected
 			self.unbilled_items = items
 			self.update_totals()
-			self.update_html_displays()
-		return {"status": "success"}
+			html_displays = self.update_html_displays()
+		return {**{"status": "success"}, **html_displays}
 
 	@frappe.whitelist()
 	def select_all_items(self, select_all=True):
@@ -275,8 +275,8 @@ class DeliveryNoteBillingWizard(Document):
 			item['selected'] = select_all
 		self.unbilled_items = items
 		self.update_totals()
-		self.update_html_displays()
-		return {"status": "success"}
+		html_displays = self.update_html_displays()
+		return {**{"status": "success"}, **html_displays}
 
 	def update_totals(self):
 		"""Update summary totals"""
@@ -298,6 +298,14 @@ class DeliveryNoteBillingWizard(Document):
 			self.invoice_matches_html = "<p>No matches found yet.</p>"
 			self.assignments_html = "<p>No assignments created yet.</p>"
 			self.processing_results_html = "<p>No processing results yet.</p>"
+
+		return {
+			'status': 'success',
+			'unbilled_items_html': self.unbilled_items_html,
+			'invoice_matches_html': self.invoice_matches_html,
+			'assignments_html': self.assignments_html,
+			'processing_results_html': self.processing_results_html
+		}
 
 	def render_unbilled_items_table(self):
 		"""Render unbilled items as HTML table"""
@@ -751,7 +759,7 @@ class DeliveryNoteBillingWizard(Document):
 
 	def update_totals(self):
 		"""Update summary totals"""
-		selected_items = [item for item in self.unbilled_items if item.selected]
+		selected_items = [item for item in self.unbilled_items if item.get('selected')]
 		self.total_selected_items = len(selected_items)
 		self.total_selected_amount = sum(flt(item.amount) for item in selected_items)
 
