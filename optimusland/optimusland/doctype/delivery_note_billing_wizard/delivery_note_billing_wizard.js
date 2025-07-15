@@ -22,8 +22,22 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 				item_index: item_index,
 				selected: selected
 			}).then(r => {
-				frm.refresh_field('total_selected_items');
-				frm.refresh_field('total_selected_amount');
+				if (r.message) {
+					// Update the HTML table with backend response
+					if (r.message.unbilled_items_html) {
+						frm.set_df_property('unbilled_items_html', 'options', r.message.unbilled_items_html);
+						frm.refresh_field('unbilled_items_html');
+					}
+					// Update totals
+					if (r.message.total_selected_items !== undefined) {
+						frm.set_value('total_selected_items', r.message.total_selected_items);
+						frm.refresh_field('total_selected_items');
+					}
+					if (r.message.total_selected_amount !== undefined) {
+						frm.set_value('total_selected_amount', r.message.total_selected_amount);
+						frm.refresh_field('total_selected_amount');
+					}
+				}
 			});
 		};
 		
@@ -78,7 +92,7 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 					frm.call('load_unbilled_items').then(r => {
 						if (r.message && r.message.status === 'success') {
 							frm.set_value('wizard_tab', '1. Load Items');
-                            frm.set_df_property('unbilled_items_html', 'options', r.message.unbilled_items_html);
+							frm.set_df_property('unbilled_items_html', 'options', r.message.unbilled_items_html);
 							frm.refresh();
 						}
 					});
@@ -89,7 +103,7 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 					frm.call('find_invoice_matches').then(r => {
 						if (r.message && r.message.status === 'success') {
 							frm.set_value('wizard_tab', '2. Find Matches');
-                            frm.set_df_property('invoice_matches_html', 'options', r.message.invoice_matches_html);
+							frm.set_df_property('invoice_matches_html', 'options', r.message.invoice_matches_html);
 							frm.refresh();
 						}
 					});
@@ -100,7 +114,7 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 					frm.call('create_assignments').then(r => {
 						if (r.message && r.message.status === 'success') {
 							frm.set_value('wizard_tab', '3. Create Assignments');
-                            frm.set_df_property('assignments_html', 'options', r.message.assignments_html);
+							frm.set_df_property('assignments_html', 'options', r.message.assignments_html);
 							frm.refresh();
 						}
 					});
@@ -114,7 +128,7 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 							frm.call('process_assignments').then(r => {
 								if (r.message && r.message.status === 'success') {
 									frm.set_value('wizard_tab', '4. Process Results');
-                                    frm.set_df_property('processing_results_html', 'options', r.message.processing_results_html);
+									frm.set_df_property('processing_results_html', 'options', r.message.processing_results_html);
 									frm.refresh();
 								}
 							});

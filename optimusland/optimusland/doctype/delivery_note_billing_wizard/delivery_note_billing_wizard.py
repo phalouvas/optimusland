@@ -275,22 +275,36 @@ class DeliveryNoteBillingWizard(Document):
 		return {**{"status": "success", "processed": processed_count, "errors": error_count}, **html_displays}
 
 	@frappe.whitelist()
-	def update_selection(self, item_index, selected):
-		"""Update item selection status"""
+	def update_selection(self, item_index=None, selected=None):
+		"""Update item selection status (fix type conversion and always refresh HTML)"""
+		# Convert types from JS (which may send strings)
+		try:
+			idx = int(item_index) if item_index is not None else None
+			# Accept true/false, 'true'/'false', 1/0
+			sel = selected in (True, 'true', 'True', 1, '1')
+		except Exception:
+			return {"status": "error", "message": "Invalid arguments"}
+
 		items = self.unbilled_items
-		if 0 <= item_index < len(items):
-			items[item_index]['selected'] = selected
+		html_displays = {}
+		if idx is not None and 0 <= idx < len(items):
+			items[idx]['selected'] = sel
 			self.unbilled_items = items
 			self.update_totals()
 			html_displays = self.update_html_displays()
+		else:
+			html_displays = self.update_html_displays()
+			return {**{"status": "error", "message": "Invalid item index"}, **html_displays}
 		return {**{"status": "success"}, **html_displays}
 
 	@frappe.whitelist()
 	def select_all_items(self, select_all=True):
-		"""Select or deselect all items"""
+		"""Select or deselect all items (fix type conversion from JS)"""
+		# Accept true/false, 'true'/'false', 1/0
+		sel = select_all in (True, 'true', 'True', 1, '1')
 		items = self.unbilled_items
 		for item in items:
-			item['selected'] = select_all
+			item['selected'] = sel
 		self.unbilled_items = items
 		self.update_totals()
 		html_displays = self.update_html_displays()
