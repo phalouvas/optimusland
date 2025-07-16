@@ -425,6 +425,7 @@ class DeliveryNoteBillingWizard(Document):
                 <thead>
                     <tr>
                         <th>Sales Invoice</th>
+                        <th>Invoice Date</th>
                         <th>Customer</th>
                         <th>Item Code</th>
                         <th>Available Qty</th>
@@ -446,16 +447,18 @@ class DeliveryNoteBillingWizard(Document):
                 status_class = "table-warning"
             else:
                 status_class = "table-danger"
-            
+
             # Create clickable links
             sales_invoice = match.get('sales_invoice', '')
             customer = match.get('customer', '')
+            posting_date = match.get('posting_date', '')
             sales_invoice_link = f'<a href="/app/sales-invoice/{sales_invoice}" target="_blank">{sales_invoice}</a>' if sales_invoice else ''
             customer_link = f'<a href="/app/customer/{customer}" target="_blank">{customer}</a>' if customer else ''
-            
+
             html += f"""
                 <tr class="{status_class}">
                     <td>{sales_invoice_link}</td>
+                    <td>{posting_date}</td>
                     <td>{customer_link}</td>
                     <td>{match.get('item_code', '')}</td>
                     <td>{match.get('available_qty', 0)}</td>
@@ -696,13 +699,15 @@ class DeliveryNoteBillingWizard(Document):
                 AND si.customer = %(customer)s
                 AND sii.item_code = %(item_code)s
                 AND (sii.qty - COALESCE(linked_qty.total_linked, 0)) > 0
+                AND si.posting_date >= %(dn_posting_date)s
             ORDER BY si.posting_date DESC
         """
         
         results = frappe.db.sql(query, {
             'company': self.company,
             'customer': item.get('customer'),
-            'item_code': item.get('item_code')
+            'item_code': item.get('item_code'),
+            'dn_posting_date': item.get('posting_date')
         }, as_dict=True)
         
         matches = []
