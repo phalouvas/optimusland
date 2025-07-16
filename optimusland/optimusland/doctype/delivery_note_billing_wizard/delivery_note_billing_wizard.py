@@ -360,6 +360,7 @@ class DeliveryNoteBillingWizard(Document):
                     <tr>
                         <th><input type="checkbox" id="select-all-items" {select_all_checked}></th>
                         <th>Delivery Note</th>
+                        <th>Date</th>
                         <th>Customer</th>
                         <th>Item Code</th>
                         <th>Item Name</th>
@@ -384,13 +385,14 @@ class DeliveryNoteBillingWizard(Document):
             # Create clickable links
             delivery_note = item.get('delivery_note', '')
             customer = item.get('customer', '')
+            posting_date = item.get('posting_date', '')
             delivery_note_link = f'<a href="/app/delivery-note/{delivery_note}" target="_blank">{delivery_note}</a>' if delivery_note else ''
             customer_link = f'<a href="/app/customer/{customer}" target="_blank">{customer}</a>' if customer else ''
-
             html += f"""
                 <tr class="{variance_class}">
                     <td><input type="checkbox" {checked} onchange="update_item_selection({i}, this.checked)"></td>
                     <td>{delivery_note_link}</td>
+                    <td>{posting_date}</td>
                     <td>{customer_link}</td>
                     <td>{item.get('item_code', '')}</td>
                     <td>{item.get('item_name', '')}</td>
