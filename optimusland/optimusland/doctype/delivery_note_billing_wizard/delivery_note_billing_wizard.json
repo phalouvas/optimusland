@@ -1,0 +1,193 @@
+{
+ "actions": [],
+ "creation": "2025-01-15 10:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "wizard_tab",
+  "company",
+  "customer",
+  "from_date",
+  "to_date",
+  "column_break_5",
+  "total_items_found",
+  "total_selected_items",
+  "total_selected_amount",
+  "processing_status",
+  "section_break_items",
+  "unbilled_items_html",
+  "section_break_matches",
+  "invoice_matches_html",
+  "section_break_assignments",
+  "assignments_html",
+  "section_break_results",
+  "processing_results_html",
+  "section_break_data",
+  "unbilled_items_data",
+  "invoice_matches_data",
+  "assignments_data",
+  "processing_results_data"
+ ],
+ "fields": [
+  {
+   "default": "1. Load Items",
+   "fieldname": "wizard_tab",
+   "fieldtype": "Select",
+   "label": "Wizard Step",
+   "options": "1. Load Items\n2. Find Matches\n3. Create Assignments\n4. Process Results"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_items_found",
+   "fieldtype": "Int",
+   "label": "Total Items Found",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_selected_items",
+   "fieldtype": "Int",
+   "label": "Total Selected Items",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_selected_amount",
+   "fieldtype": "Currency",
+   "label": "Total Selected Amount",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "processing_status",
+   "fieldtype": "Select",
+   "label": "Processing Status",
+   "options": "Draft\nItems Loaded\nMatches Found\nAssignments Created\nProcessing\nCompleted\nFailed",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.wizard_tab=='1. Load Items'",
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Unbilled Delivery Note Items"
+  },
+  {
+   "fieldname": "unbilled_items_html",
+   "fieldtype": "HTML",
+   "label": "Unbilled Items"
+  },
+  {
+   "depends_on": "eval:doc.wizard_tab=='2. Find Matches'",
+   "fieldname": "section_break_matches",
+   "fieldtype": "Section Break",
+   "label": "Potential Invoice Matches"
+  },
+  {
+   "fieldname": "invoice_matches_html",
+   "fieldtype": "HTML",
+   "label": "Invoice Matches"
+  },
+  {
+   "depends_on": "eval:doc.wizard_tab=='3. Create Assignments'",
+   "fieldname": "section_break_assignments",
+   "fieldtype": "Section Break",
+   "label": "Billing Assignments"
+  },
+  {
+   "fieldname": "assignments_html",
+   "fieldtype": "HTML",
+   "label": "Assignments"
+  },
+  {
+   "depends_on": "eval:doc.wizard_tab=='4. Process Results'",
+   "fieldname": "section_break_results",
+   "fieldtype": "Section Break",
+   "label": "Processing Results"
+  },
+  {
+   "fieldname": "processing_results_html",
+   "fieldtype": "HTML",
+   "label": "Processing Results"
+  },
+  {
+   "fieldname": "section_break_data",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Data Storage"
+  },
+  {
+   "fieldname": "unbilled_items_data",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Unbilled Items Data"
+  },
+  {
+   "fieldname": "invoice_matches_data",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Invoice Matches Data"
+  },
+  {
+   "fieldname": "assignments_data",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Assignments Data"
+  },
+  {
+   "fieldname": "processing_results_data",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Processing Results Data"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_virtual": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-07-15 18:13:04.877004",
+ "modified_by": "Administrator",
+ "module": "Optimusland",
+ "name": "Delivery Note Billing Wizard",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
