@@ -3,6 +3,12 @@
 
 frappe.ui.form.on('Delivery Note Billing Wizard', {
 	onload: function(frm) {
+
+		frm.set_df_property('unbilled_items_html', 'options', " ");
+		frm.set_df_property('invoice_matches_html', 'options', " ");
+		frm.set_df_property('assignments_html', 'options', " ");
+		frm.set_df_property('processing_results_html', 'options', " ");
+
 		// Set default filters if not set
 		if (!frm.doc.company && frappe.defaults.get_user_default("Company")) {
 			frm.set_value('company', frappe.defaults.get_user_default("Company"));
