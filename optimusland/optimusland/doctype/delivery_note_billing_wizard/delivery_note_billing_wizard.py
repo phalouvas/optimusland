@@ -133,6 +133,7 @@ class DeliveryNoteBillingWizard(Document):
             if item.get('delivery_note') and item.get('item_code'):  # Skip summary rows
                items.append({
                    'delivery_note': item.get('delivery_note'),
+                   'dn_detail': item.get('dn_detail'),
                    'item_code': item.get('item_code'),
                    'item_name': item.get('item_name'),
                    'qty': item.get('qty'),
@@ -178,7 +179,6 @@ class DeliveryNoteBillingWizard(Document):
         self.wizard_tab = "2. Find Matches"
         html_displays = self.update_html_displays()
         
-        frappe.msgprint(f"Found {len(matches)} potential matches")
         return {**{"status": "success", "count": len(matches)}, **html_displays}
 
     @frappe.whitelist()
@@ -197,7 +197,7 @@ class DeliveryNoteBillingWizard(Document):
                 continue
             
             remaining_qty = item.get('outstanding_qty') or item.get('qty', 0)
-            item_key = f"{item['delivery_note']}|{item['item_code']}"
+            item_key = item.get('dn_detail')  # Use unique dn_detail identifier
             
             # Find best matches for this item
             best_matches = [m for m in matches if m.get('item_code') == item['item_code']]
@@ -211,7 +211,7 @@ class DeliveryNoteBillingWizard(Document):
                 if assign_qty > 0:
                     assignment = {
                         'delivery_note_item': item_key,
-                        'sales_invoice_item': f"{match.get('sales_invoice')}|{match.get('item_code')}",
+                        'sales_invoice_item': match.get('si_detail'),  # Use unique si_detail identifier
                         'qty_to_assign': assign_qty,
                         'rate_variance': abs(flt(item.get('rate', 0)) - flt(match.get('rate', 0))),
                         'amount_to_assign': assign_qty * flt(item.get('rate', 0)),
@@ -253,18 +253,24 @@ class DeliveryNoteBillingWizard(Document):
                     error_count += 1
             
             except Exception as e:
-                # Parse assignment details for error reporting
-                dn_item = assignment.get('delivery_note_item', '')
-                si_item = assignment.get('sales_invoice_item', '')
+                # Get assignment details for error reporting
+                dn_detail_name = assignment.get('delivery_note_item', '')
+                si_detail_name = assignment.get('sales_invoice_item', '')
                 
-                # Extract document names properly
-                dn_parts = dn_item.rsplit('|', 1)
-                si_parts = si_item.rsplit('|', 1)
+                # Try to get document names from the database
+                try:
+                    dn_info = frappe.db.get_value("Delivery Note Item", dn_detail_name, 
+                        ["parent", "item_code"], as_dict=True) if dn_detail_name else {}
+                    si_info = frappe.db.get_value("Sales Invoice Item", si_detail_name, 
+                        ["parent", "item_code"], as_dict=True) if si_detail_name else {}
+                except:
+                    dn_info = {}
+                    si_info = {}
                 
                 error_result = {
-                    'delivery_note': dn_parts[0] if len(dn_parts) > 0 else '',
-                    'sales_invoice': si_parts[0] if len(si_parts) > 0 else '',
-                    'item_code': dn_parts[1] if len(dn_parts) > 1 else '',
+                    'delivery_note': dn_info.get('parent', ''),
+                    'sales_invoice': si_info.get('parent', ''),
+                    'item_code': dn_info.get('item_code', ''),
                     'processed_qty': 0,
                     'status': 'Failed',
                     'error_message': str(e),
@@ -513,28 +519,32 @@ class DeliveryNoteBillingWizard(Document):
                 confidence_class = "table-danger"
             
             # Parse assignment items to create links
-            dn_item = assignment.get('delivery_note_item', '')
-            si_item = assignment.get('sales_invoice_item', '')
+            dn_detail_name = assignment.get('delivery_note_item', '')  # This is now dn_detail name
+            si_detail_name = assignment.get('sales_invoice_item', '')  # This is now si_detail name
             
-            # Extract document names (everything before the last pipe-item_code)
-            # Since format is "DOC-NAME|item_code", we need to find the last pipe
-            dn_name = dn_item
-            si_name = si_item
+            # Get document names from database
+            dn_info = {}
+            si_info = {}
+            try:
+                if dn_detail_name:
+                    dn_info = frappe.db.get_value("Delivery Note Item", dn_detail_name, 
+                        ["parent", "item_code"], as_dict=True) or {}
+                if si_detail_name:
+                    si_info = frappe.db.get_value("Sales Invoice Item", si_detail_name, 
+                        ["parent", "item_code"], as_dict=True) or {}
+            except:
+                pass
             
-            # Find the last pipe to separate document name from item code
-            if '|' in dn_item:
-                parts = dn_item.rsplit('|', 1)  # Split from right, only once
-                if len(parts) == 2:
-                    dn_name = parts[0]  # Everything except the last part (item code)
-            
-            if '|' in si_item:
-                parts = si_item.rsplit('|', 1)  # Split from right, only once
-                if len(parts) == 2:
-                    si_name = parts[0]  # Everything except the last part (item code)
+            dn_name = dn_info.get('parent', '')
+            si_name = si_info.get('parent', '')
+            item_code = dn_info.get('item_code', '')
             
             # Create clickable links
-            dn_link = f'<a href="/app/delivery-note/{dn_name}" target="_blank">{dn_item}</a>' if dn_name else dn_item
-            si_link = f'<a href="/app/sales-invoice/{si_name}" target="_blank">{si_item}</a>' if si_name else si_item
+            dn_display = f"{dn_name}|{item_code}" if dn_name and item_code else dn_detail_name
+            si_display = f"{si_name}|{item_code}" if si_name and item_code else si_detail_name
+            
+            dn_link = f'<a href="/app/delivery-note/{dn_name}" target="_blank">{dn_display}</a>' if dn_name else dn_display
+            si_link = f'<a href="/app/sales-invoice/{si_name}" target="_blank">{si_display}</a>' if si_name else si_display
             
             html += f"""
                 <tr class="{confidence_class}">
@@ -643,6 +653,7 @@ class DeliveryNoteBillingWizard(Document):
                 dn.posting_date,
                 dn.customer,
                 dn.customer_name,
+                dni.name as dn_detail,
                 dni.item_code,
                 dni.item_name,
                 dni.qty,
@@ -690,6 +701,7 @@ class DeliveryNoteBillingWizard(Document):
                 si.name as sales_invoice,
                 si.posting_date,
                 si.customer,
+                sii.name as si_detail,
                 sii.item_code,
                 sii.item_name,
                 sii.qty,
@@ -732,6 +744,7 @@ class DeliveryNoteBillingWizard(Document):
             
             matches.append({
                 'sales_invoice': result.sales_invoice,
+                'si_detail': result.si_detail,
                 'item_code': result.item_code,
                 'item_name': result.item_name,
                 'available_qty': result.available_qty,
@@ -805,44 +818,39 @@ class DeliveryNoteBillingWizard(Document):
     def process_single_assignment(self, assignment):
         """Process a single billing assignment"""
         try:
-            # Parse the assignment details
-            dn_item_parts = assignment.get('delivery_note_item', '').rsplit('|', 1)
-            si_item_parts = assignment.get('sales_invoice_item', '').rsplit('|', 1)
-            
-            delivery_note = dn_item_parts[0] if len(dn_item_parts) > 0 else ''
-            sales_invoice = si_item_parts[0] if len(si_item_parts) > 0 else ''
-            item_code = dn_item_parts[1] if len(dn_item_parts) > 1 else ''
+            # Get the unique identifiers directly
+            dn_detail_name = assignment.get('delivery_note_item')  # This is now dn_detail
+            si_detail_name = assignment.get('sales_invoice_item')  # This is now si_detail
             
             # Get delivery note item detail
-            dn_item = frappe.db.get_value("Delivery Note Item", {
-                "parent": delivery_note,
-                "item_code": item_code
-            }, ["name", "qty", "rate"], as_dict=True)
+            dn_item = frappe.db.get_value("Delivery Note Item", dn_detail_name, 
+                ["name", "parent", "item_code", "qty", "rate"], as_dict=True)
             
             if not dn_item:
-                raise Exception(f"Delivery Note Item not found for {delivery_note} - {item_code}")
+                raise Exception(f"Delivery Note Item not found: {dn_detail_name}")
             
             # Get sales invoice item detail
-            si_item = frappe.db.get_value("Sales Invoice Item", {
-                "parent": sales_invoice,
-                "item_code": item_code,
-                "delivery_note": ["in", ["", None]]  # Not already linked
-            }, ["name", "qty", "rate"], as_dict=True)
+            si_item = frappe.db.get_value("Sales Invoice Item", si_detail_name,
+                ["name", "parent", "item_code", "qty", "rate", "delivery_note"], as_dict=True)
             
             if not si_item:
-                raise Exception(f"Available Sales Invoice Item not found for {sales_invoice} - {item_code}")
+                raise Exception(f"Sales Invoice Item not found: {si_detail_name}")
+            
+            # Check if already linked
+            if si_item.get('delivery_note'):
+                raise Exception(f"Sales Invoice Item {si_detail_name} is already linked to {si_item.delivery_note}")
             
             # Update the sales invoice item to link to delivery note
-            frappe.db.set_value("Sales Invoice Item", si_item.name, {
-                "delivery_note": delivery_note,
-                "dn_detail": dn_item.name
+            frappe.db.set_value("Sales Invoice Item", si_detail_name, {
+                "delivery_note": dn_item.parent,
+                "dn_detail": dn_detail_name
             })
             
             # Create success result
             result = {
-                'delivery_note': delivery_note,
-                'sales_invoice': sales_invoice,
-                'item_code': item_code,
+                'delivery_note': dn_item.parent,
+                'sales_invoice': si_item.parent,
+                'item_code': dn_item.item_code,
                 'processed_qty': assignment.get('qty_to_assign', 0),
                 'status': 'Success',
                 'success_message': f"Successfully linked {assignment.get('qty_to_assign', 0)} qty",
