@@ -143,7 +143,7 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 							frm.refresh();
 						}
 					});
-				}, __('Wizard Actions'));
+				}).addClass("btn-primary");
 				break;
 			case 'Items Loaded':
 				frm.add_custom_button(__('Find Invoice Matches'), function() {
@@ -154,7 +154,7 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 							frm.refresh();
 						}
 					});
-				}, __('Wizard Actions'));
+				}).addClass("btn-primary");
 				break;
 			case 'Matches Found':
 				frm.add_custom_button(__('Create Assignments'), function() {
@@ -165,7 +165,7 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 							frm.refresh();
 						}
 					});
-				}, __('Wizard Actions'));
+				}).addClass("btn-primary");
 				break;
 			case 'Assignments Created':
 				frm.add_custom_button(__('Process Assignments'), function() {
@@ -181,7 +181,7 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 							});
 						}
 					);
-				}, __('Wizard Actions'));
+				}).addClass("btn-primary");
 				break;
 		}
 		
