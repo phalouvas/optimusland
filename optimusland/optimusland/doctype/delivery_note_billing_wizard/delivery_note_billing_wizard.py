@@ -198,7 +198,7 @@ class DeliveryNoteBillingWizard(Document):
                 continue
             
             remaining_qty = item.get('outstanding_qty') or item.get('qty', 0)
-            item_key = f"{item['delivery_note']}-{item['item_code']}"
+            item_key = f"{item['delivery_note']}|{item['item_code']}"
             
             # Find best matches for this item
             best_matches = [m for m in matches if m.get('item_code') == item['item_code']]
@@ -212,7 +212,7 @@ class DeliveryNoteBillingWizard(Document):
                 if assign_qty > 0:
                     assignment = {
                         'delivery_note_item': item_key,
-                        'sales_invoice_item': f"{match.get('sales_invoice')}-{match.get('item_code')}",
+                        'sales_invoice_item': f"{match.get('sales_invoice')}|{match.get('item_code')}",
                         'qty_to_assign': assign_qty,
                         'rate_variance': abs(flt(item.get('rate', 0)) - flt(match.get('rate', 0))),
                         'amount_to_assign': assign_qty * flt(item.get('rate', 0)),
@@ -255,10 +255,18 @@ class DeliveryNoteBillingWizard(Document):
                     error_count += 1
             
             except Exception as e:
+                # Parse assignment details for error reporting
+                dn_item = assignment.get('delivery_note_item', '')
+                si_item = assignment.get('sales_invoice_item', '')
+                
+                # Extract document names properly
+                dn_parts = dn_item.rsplit('|', 1)
+                si_parts = si_item.rsplit('|', 1)
+                
                 error_result = {
-                    'delivery_note': assignment.get('delivery_note_item', '').split('-')[0],
-                    'sales_invoice': assignment.get('sales_invoice_item', '').split('-')[0],
-                    'item_code': assignment.get('delivery_note_item', '').split('-')[1] if '-' in assignment.get('delivery_note_item', '') else '',
+                    'delivery_note': dn_parts[0] if len(dn_parts) > 0 else '',
+                    'sales_invoice': si_parts[0] if len(si_parts) > 0 else '',
+                    'item_code': dn_parts[1] if len(dn_parts) > 1 else '',
                     'processed_qty': 0,
                     'status': 'Failed',
                     'error_message': str(e),
@@ -487,8 +495,8 @@ class DeliveryNoteBillingWizard(Document):
             <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th>DN Item</th>
-                        <th>SI Item</th>
+                        <th>Delivery Note</th>
+                        <th>Sales Invoice</th>
                         <th>Qty to Assign</th>
                         <th>Amount</th>
                         <th>Type</th>
@@ -512,15 +520,25 @@ class DeliveryNoteBillingWizard(Document):
             dn_item = assignment.get('delivery_note_item', '')
             si_item = assignment.get('sales_invoice_item', '')
             
-            # Create clickable links for delivery note and sales invoice
-            dn_link = dn_item
-            si_link = si_item
-            if '-' in dn_item:
-                dn_name = dn_item.split('-')[0]
-                dn_link = f'<a href="/app/delivery-note/{dn_name}" target="_blank">{dn_item}</a>'
-            if '-' in si_item:
-                si_name = si_item.split('-')[0]
-                si_link = f'<a href="/app/sales-invoice/{si_name}" target="_blank">{si_item}</a>'
+            # Extract document names (everything before the last pipe-item_code)
+            # Since format is "DOC-NAME|item_code", we need to find the last pipe
+            dn_name = dn_item
+            si_name = si_item
+            
+            # Find the last pipe to separate document name from item code
+            if '|' in dn_item:
+                parts = dn_item.rsplit('|', 1)  # Split from right, only once
+                if len(parts) == 2:
+                    dn_name = parts[0]  # Everything except the last part (item code)
+            
+            if '|' in si_item:
+                parts = si_item.rsplit('|', 1)  # Split from right, only once
+                if len(parts) == 2:
+                    si_name = parts[0]  # Everything except the last part (item code)
+            
+            # Create clickable links
+            dn_link = f'<a href="/app/delivery-note/{dn_name}" target="_blank">{dn_item}</a>' if dn_name else dn_item
+            si_link = f'<a href="/app/sales-invoice/{si_name}" target="_blank">{si_item}</a>' if si_name else si_item
             
             html += f"""
                 <tr class="{confidence_class}">
@@ -792,8 +810,8 @@ class DeliveryNoteBillingWizard(Document):
         """Process a single billing assignment"""
         try:
             # Parse the assignment details
-            dn_item_parts = assignment.get('delivery_note_item', '').split('-', 1)
-            si_item_parts = assignment.get('sales_invoice_item', '').split('-', 1)
+            dn_item_parts = assignment.get('delivery_note_item', '').rsplit('|', 1)
+            si_item_parts = assignment.get('sales_invoice_item', '').rsplit('|', 1)
             
             delivery_note = dn_item_parts[0] if len(dn_item_parts) > 0 else ''
             sales_invoice = si_item_parts[0] if len(si_item_parts) > 0 else ''
