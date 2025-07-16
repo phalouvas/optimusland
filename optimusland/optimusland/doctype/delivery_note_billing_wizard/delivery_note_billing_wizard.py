@@ -371,7 +371,6 @@ class DeliveryNoteBillingWizard(Document):
                         <th>Date</th>
                         <th>Customer</th>
                         <th>Item Code</th>
-                        <th>Item Name</th>
                         <th>Qty</th>
                         <th>Rate</th>
                         <th>Amount</th>
@@ -403,7 +402,6 @@ class DeliveryNoteBillingWizard(Document):
                     <td>{posting_date}</td>
                     <td>{customer_link}</td>
                     <td>{item.get('item_code', '')}</td>
-                    <td>{item.get('item_name', '')}</td>
                     <td>{item.get('qty', 0)}</td>
                     <td>{frappe.format(item.get('rate', 0), {'fieldtype': 'Currency'})}</td>
                     <td>{frappe.format(item.get('amount', 0), {'fieldtype': 'Currency'})}</td>
