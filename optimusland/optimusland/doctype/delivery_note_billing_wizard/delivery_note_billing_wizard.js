@@ -188,17 +188,6 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 				break;
 		}
 		
-		// Always show selection helper buttons if items are loaded
-		if (frm.doc.processing_status !== 'Draft' && frm.doc.total_items_found > 0) {
-			frm.add_custom_button(__('Select All'), function() {
-				window.select_all_items_toggle(true);
-			}, __('Selection'));
-			
-			frm.add_custom_button(__('Deselect All'), function() {
-				window.select_all_items_toggle(false);
-			}, __('Selection'));
-		}
-		
 		// Show status in page title for virtual doctypes (no dashboard)
 		if (frm.doc.processing_status) {
 			let status_text = frm.doc.processing_status;
