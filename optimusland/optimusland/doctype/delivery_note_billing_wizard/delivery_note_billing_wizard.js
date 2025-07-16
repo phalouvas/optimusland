@@ -118,6 +118,9 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 	},
 	
 	refresh: function(frm) {
+
+		frm.disable_save();
+		
 		// Clear existing custom buttons to avoid duplicates
 		frm.clear_custom_buttons();
 		
