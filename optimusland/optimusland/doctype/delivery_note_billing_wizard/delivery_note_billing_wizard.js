@@ -133,8 +133,8 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 		// Add buttons based on current processing status
 		switch(frm.doc.processing_status) {
 			case 'Draft':
-				frm.add_custom_button(__('Load Unbilled Items'), function() {
-					frm.call('load_unbilled_items').then(r => {
+				frm.add_custom_button(__('Load Items'), function() {
+					frm.call('load_items').then(r => {
 						if (r.message && r.message.status === 'success') {
 							frm.set_value('wizard_tab', '1. Load Items');
 							if (r.message.unbilled_items_html) {

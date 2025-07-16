@@ -119,17 +119,17 @@ class DeliveryNoteBillingWizard(Document):
         self.processing_results_data = json.dumps(value) if value else ""
 
     @frappe.whitelist()
-    def load_unbilled_items(self):
-        """Load unbilled delivery note items based on filters"""
+    def load_items(self):
+        """Load delivery note items based on filters"""
         if not self.company:
             frappe.throw("Company is required")
         
-        # Get unbilled items using the same logic as the report
-        unbilled_data = self.get_unbilled_delivery_notes()
+        # Get delivery notes using the updated method
+        delivery_data = self.get_delivery_notes()
         
         # Store data as JSON
         items = []
-        for item in unbilled_data:
+        for item in delivery_data:
             if item.get('delivery_note') and item.get('item_code'):  # Skip summary rows
                items.append({
                    'delivery_note': item.get('delivery_note'),
@@ -146,7 +146,9 @@ class DeliveryNoteBillingWizard(Document):
                    'billing_variance': item.get('billing_variance', 0),
                    'actual_billed_qty': item.get('actual_billed_qty', 0),
                    'outstanding_qty': item.get('outstanding_qty', 0),
-                   'billing_status': item.get('billing_status', '')
+                   'billing_status': item.get('billing_status', ''),
+                   'current_invoice': item.get('current_invoice', ''),
+                   'current_si_detail': item.get('current_si_detail', '')
                })
         
         self.unbilled_items = items
@@ -163,7 +165,7 @@ class DeliveryNoteBillingWizard(Document):
         """Find potential sales invoice matches for selected items"""
         items = self.unbilled_items
         if not items:
-            frappe.throw("Please load unbilled items first")
+            frappe.throw("Please load items first")
         
         selected_items = [item for item in items if item.get('selected')]
         if not selected_items:
@@ -339,7 +341,7 @@ class DeliveryNoteBillingWizard(Document):
             self.processing_results_html = self.render_processing_results_table()
         except Exception:
             # If there's an error during HTML rendering, set default messages
-            self.unbilled_items_html = "<p>Click 'Load Unbilled Items' to begin.</p>"
+            self.unbilled_items_html = "<p>Click 'Load Items' to begin.</p>"
             self.invoice_matches_html = "<p>No matches found yet.</p>"
             self.assignments_html = "<p>No assignments created yet.</p>"
             self.processing_results_html = "<p>No processing results yet.</p>"
@@ -355,10 +357,10 @@ class DeliveryNoteBillingWizard(Document):
         }
 
     def render_unbilled_items_table(self):
-        """Render unbilled items as HTML table"""
+        """Render delivery note items as HTML table"""
         items = self.unbilled_items
         if not items:
-            return "<p>No items loaded. Click 'Load Unbilled Items' to begin.</p>"
+            return "<p>No items loaded. Click 'Load Items' to begin.</p>"
 
         # Check if all items are selected for select-all checkbox state
         selected_items = [item for item in items if item.get('selected')]
@@ -381,6 +383,7 @@ class DeliveryNoteBillingWizard(Document):
                         <th>Outstanding Qty</th>
                         <th>Billing Variance</th>
                         <th>Status</th>
+                        <th>Current Invoice</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -391,14 +394,24 @@ class DeliveryNoteBillingWizard(Document):
             if abs(flt(item.get('billing_variance', 0))) > 0:
                 variance_class = "table-warning"
 
+            # Add status-based styling
+            billing_status = item.get('billing_status', '')
+            if billing_status == 'Fully Billed':
+                variance_class = "table-success"
+            elif billing_status == 'Partially Billed':
+                variance_class = "table-info"
+
             checked = "checked" if item.get('selected') else ""
 
             # Create clickable links
             delivery_note = item.get('delivery_note', '')
             customer = item.get('customer', '')
             posting_date = item.get('posting_date', '')
+            current_invoice = item.get('current_invoice', '')
             delivery_note_link = f'<a href="/app/delivery-note/{delivery_note}" target="_blank">{delivery_note}</a>' if delivery_note else ''
             customer_link = f'<a href="/app/customer/{customer}" target="_blank">{customer}</a>' if customer else ''
+            current_invoice_link = f'<a href="/app/sales-invoice/{current_invoice}" target="_blank">{current_invoice}</a>' if current_invoice else 'Not Linked'
+            
             html += f"""
                 <tr class="{variance_class}">
                     <td><input type="checkbox" {checked} onchange="update_item_selection({i}, this.checked)"></td>
@@ -411,7 +424,8 @@ class DeliveryNoteBillingWizard(Document):
                     <td>{frappe.format(item.get('amount', 0), {'fieldtype': 'Currency'})}</td>
                     <td>{item.get('outstanding_qty', 0)}</td>
                     <td>{frappe.format(item.get('billing_variance', 0), {'fieldtype': 'Currency'})}</td>
-                    <td>{item.get('billing_status', '')}</td>
+                    <td>{billing_status}</td>
+                    <td>{current_invoice_link}</td>
                 </tr>
             """
 
@@ -442,6 +456,8 @@ class DeliveryNoteBillingWizard(Document):
                         <th>Rate</th>
                         <th>Compatibility Score</th>
                         <th>Match Status</th>
+                        <th>Link Status</th>
+                        <th>Currently Linked DN</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -449,7 +465,11 @@ class DeliveryNoteBillingWizard(Document):
         
         for match in matches:
             status_class = ""
-            if match.get('status') == 'Perfect Match':
+            if match.get('status') == 'Currently Linked':
+                status_class = "table-primary"
+            elif match.get('status') == 'Linked to Other DN':
+                status_class = "table-secondary"
+            elif match.get('status') == 'Perfect Match':
                 status_class = "table-success"
             elif match.get('status') == 'Good Match':
                 status_class = "table-info"
@@ -462,8 +482,11 @@ class DeliveryNoteBillingWizard(Document):
             sales_invoice = match.get('sales_invoice', '')
             customer = match.get('customer', '')
             posting_date = match.get('posting_date', '')
+            currently_linked_dn = match.get('currently_linked_dn', '')
+            
             sales_invoice_link = f'<a href="/app/sales-invoice/{sales_invoice}" target="_blank">{sales_invoice}</a>' if sales_invoice else ''
             customer_link = f'<a href="/app/customer/{customer}" target="_blank">{customer}</a>' if customer else ''
+            linked_dn_link = f'<a href="/app/delivery-note/{currently_linked_dn}" target="_blank">{currently_linked_dn}</a>' if currently_linked_dn else 'None'
 
             html += f"""
                 <tr class="{status_class}">
@@ -475,6 +498,8 @@ class DeliveryNoteBillingWizard(Document):
                     <td>{frappe.format(match.get('rate', 0), {'fieldtype': 'Currency'})}</td>
                     <td>{match.get('compatibility_score', 0)}%</td>
                     <td>{match.get('status', '')}</td>
+                    <td>{match.get('link_status', '')}</td>
+                    <td>{linked_dn_link}</td>
                 </tr>
             """
         
@@ -628,8 +653,8 @@ class DeliveryNoteBillingWizard(Document):
         
         return html
 
-    def get_unbilled_delivery_notes(self):
-        """Get unbilled delivery notes using the same logic as the report"""
+    def get_delivery_notes(self):
+        """Get delivery notes (both billed and unbilled) based on filters"""
         conditions = ["dn.company = %(company)s"]
         values = {"company": self.company}
         
@@ -670,7 +695,9 @@ class DeliveryNoteBillingWizard(Document):
                     WHEN COALESCE(actual_billed.total_billed_qty, 0) >= dni.qty THEN 'Fully Billed'
                     WHEN COALESCE(actual_billed.total_billed_qty, 0) > 0 THEN 'Partially Billed'
                     ELSE 'Not Billed'
-                END as billing_status
+                END as billing_status,
+                COALESCE(linked_invoice.sales_invoice, '') as current_invoice,
+                COALESCE(linked_invoice.si_detail, '') as current_si_detail
             FROM `tabDelivery Note` dn
             INNER JOIN `tabDelivery Note Item` dni ON dn.name = dni.parent
             LEFT JOIN (
@@ -686,9 +713,20 @@ class DeliveryNoteBillingWizard(Document):
                     AND sii.delivery_note != ''
                 GROUP BY sii.delivery_note, sii.dn_detail
             ) actual_billed ON dn.name = actual_billed.delivery_note AND dni.name = actual_billed.dn_detail
+            LEFT JOIN (
+                SELECT 
+                    sii.delivery_note,
+                    sii.dn_detail,
+                    sii.parent as sales_invoice,
+                    sii.name as si_detail
+                FROM `tabSales Invoice Item` sii
+                INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
+                WHERE si.docstatus = 1 
+                    AND sii.delivery_note IS NOT NULL 
+                    AND sii.delivery_note != ''
+            ) linked_invoice ON dn.name = linked_invoice.delivery_note AND dni.name = linked_invoice.dn_detail
             WHERE dn.docstatus = 1 
                 AND {conditions_str}
-                AND (dni.qty - COALESCE(actual_billed.total_billed_qty, 0)) > 0
             ORDER BY dn.posting_date DESC, dn.name, dni.item_code
         """
         
@@ -707,54 +745,73 @@ class DeliveryNoteBillingWizard(Document):
                 sii.qty,
                 sii.rate,
                 sii.amount,
-                COALESCE(linked_qty.total_linked, 0) as already_linked_qty,
-                (sii.qty - COALESCE(linked_qty.total_linked, 0)) as available_qty
+                sii.delivery_note as currently_linked_dn,
+                sii.dn_detail as currently_linked_dn_detail,
+                COALESCE(other_linked_qty.total_linked, 0) as other_linked_qty,
+                (sii.qty - COALESCE(other_linked_qty.total_linked, 0)) as available_qty,
+                CASE 
+                    WHEN sii.delivery_note = %(delivery_note)s AND sii.dn_detail = %(dn_detail)s THEN 'Currently Linked'
+                    WHEN sii.delivery_note IS NOT NULL AND sii.delivery_note != '' THEN 'Linked to Other DN'
+                    ELSE 'Available'
+                END as link_status
             FROM `tabSales Invoice` si
             INNER JOIN `tabSales Invoice Item` sii ON si.name = sii.parent
             LEFT JOIN (
                 SELECT 
                     parent,
                     item_code,
-                    SUM(qty) as total_linked
+                    SUM(CASE WHEN delivery_note != %(delivery_note)s OR dn_detail != %(dn_detail)s THEN qty ELSE 0 END) as total_linked
                 FROM `tabSales Invoice Item`
                 WHERE delivery_note IS NOT NULL AND delivery_note != ''
                 GROUP BY parent, item_code
-            ) linked_qty ON sii.parent = linked_qty.parent AND sii.item_code = linked_qty.item_code
+            ) other_linked_qty ON sii.parent = other_linked_qty.parent AND sii.item_code = other_linked_qty.item_code
             WHERE si.docstatus = 1
                 AND si.company = %(company)s
                 AND si.customer = %(customer)s
                 AND sii.item_code = %(item_code)s
-                AND (sii.qty - COALESCE(linked_qty.total_linked, 0)) > 0
                 AND si.posting_date >= %(dn_posting_date)s
-            ORDER BY si.posting_date DESC
+            ORDER BY 
+                CASE WHEN sii.delivery_note = %(delivery_note)s AND sii.dn_detail = %(dn_detail)s THEN 0 ELSE 1 END,
+                si.posting_date DESC
         """
         
         results = frappe.db.sql(query, {
             'company': self.company,
             'customer': item.get('customer'),
             'item_code': item.get('item_code'),
-            'dn_posting_date': item.get('posting_date')
+            'dn_posting_date': item.get('posting_date'),
+            'delivery_note': item.get('delivery_note'),
+            'dn_detail': item.get('dn_detail')
         }, as_dict=True)
         
         matches = []
         for result in results:
             # Calculate compatibility score
             score = self.calculate_compatibility_score(item, result)
-            status = self.get_match_status(score)
+            status = self.get_match_status(score, result.get('link_status'))
+            
+            # For currently linked items, show full quantity as available
+            if result.get('link_status') == 'Currently Linked':
+                available_qty = result.get('qty', 0)
+            else:
+                available_qty = result.get('available_qty', 0)
             
             matches.append({
                 'sales_invoice': result.sales_invoice,
                 'si_detail': result.si_detail,
                 'item_code': result.item_code,
                 'item_name': result.item_name,
-                'available_qty': result.available_qty,
+                'available_qty': available_qty,
                 'rate': result.rate,
                 'amount': result.amount,
                 'posting_date': str(result.posting_date) if result.posting_date else '',
                 'customer': result.customer,
-                'already_linked_qty': result.already_linked_qty,
+                'other_linked_qty': result.other_linked_qty,
                 'compatibility_score': score,
-                'status': status
+                'status': status,
+                'link_status': result.link_status,
+                'currently_linked_dn': result.currently_linked_dn or '',
+                'currently_linked_dn_detail': result.currently_linked_dn_detail or ''
             })
         
         return matches
@@ -795,9 +852,13 @@ class DeliveryNoteBillingWizard(Document):
         
         return min(score, 100)
 
-    def get_match_status(self, score):
-        """Get match status based on compatibility score"""
-        if score >= 90:
+    def get_match_status(self, score, link_status=None):
+        """Get match status based on compatibility score and link status"""
+        if link_status == 'Currently Linked':
+            return "Currently Linked"
+        elif link_status == 'Linked to Other DN':
+            return "Linked to Other DN"
+        elif score >= 90:
             return "Perfect Match"
         elif score >= 75:
             return "Good Match"
@@ -831,16 +892,34 @@ class DeliveryNoteBillingWizard(Document):
             
             # Get sales invoice item detail
             si_item = frappe.db.get_value("Sales Invoice Item", si_detail_name,
-                ["name", "parent", "item_code", "qty", "rate", "delivery_note"], as_dict=True)
+                ["name", "parent", "item_code", "qty", "rate", "delivery_note", "dn_detail"], as_dict=True)
             
             if not si_item:
                 raise Exception(f"Sales Invoice Item not found: {si_detail_name}")
             
-            # Check if already linked
-            if si_item.get('delivery_note'):
-                raise Exception(f"Sales Invoice Item {si_detail_name} is already linked to {si_item.delivery_note}")
+            # Check if this delivery note item is currently linked to a different sales invoice item
+            current_link = frappe.db.get_value("Sales Invoice Item", 
+                {"delivery_note": dn_item.parent, "dn_detail": dn_detail_name}, 
+                ["name", "parent"], as_dict=True)
             
-            # Update the sales invoice item to link to delivery note
+            # If currently linked to a different sales invoice item, unlink it first
+            if current_link and current_link.name != si_detail_name:
+                frappe.db.set_value("Sales Invoice Item", current_link.name, {
+                    "delivery_note": None,
+                    "dn_detail": None
+                })
+                frappe.msgprint(f"Unlinked {dn_item.parent} from {current_link.parent}")
+            
+            # Check if the target sales invoice item is already linked to a different delivery note
+            if si_item.get('delivery_note') and si_item.get('delivery_note') != dn_item.parent:
+                # Unlink from the previous delivery note
+                frappe.db.set_value("Sales Invoice Item", si_detail_name, {
+                    "delivery_note": None,
+                    "dn_detail": None
+                })
+                frappe.msgprint(f"Unlinked {si_item.parent} from previous delivery note {si_item.delivery_note}")
+            
+            # Update the sales invoice item to link to the new delivery note
             frappe.db.set_value("Sales Invoice Item", si_detail_name, {
                 "delivery_note": dn_item.parent,
                 "dn_detail": dn_detail_name
@@ -853,7 +932,7 @@ class DeliveryNoteBillingWizard(Document):
                 'item_code': dn_item.item_code,
                 'processed_qty': assignment.get('qty_to_assign', 0),
                 'status': 'Success',
-                'success_message': f"Successfully linked {assignment.get('qty_to_assign', 0)} qty",
+                'success_message': f"Successfully linked {assignment.get('qty_to_assign', 0)} qty to {si_item.parent}",
                 'process_time': now()
             }
             
