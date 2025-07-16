@@ -155,7 +155,6 @@ class DeliveryNoteBillingWizard(Document):
         self.update_totals()
         html_displays = self.update_html_displays()
         
-        frappe.msgprint(f"Loaded {len(items)} unbilled items")
         return {**{"status": "success", "count": len(items)}, **html_displays}
 
     @frappe.whitelist()
@@ -228,7 +227,6 @@ class DeliveryNoteBillingWizard(Document):
         self.wizard_tab = "3. Create Assignments"
         html_displays = self.update_html_displays()
         
-        frappe.msgprint(f"Created {len(assignments)} billing assignments")
         return {**{"status": "success", "count": len(assignments)}, **html_displays}
 
     @frappe.whitelist()

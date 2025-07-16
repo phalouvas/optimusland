@@ -184,7 +184,7 @@ frappe.ui.form.on('Delivery Note Billing Wizard', {
 							});
 						}
 					);
-				}).addClass("btn-primary");
+				}).addClass("btn-danger");
 				break;
 		}
 		
