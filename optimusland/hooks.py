@@ -133,14 +133,14 @@ doctype_list_js = {"Batch" : "public/js/batch_list.js"}
 doc_events = {
     "Purchase Receipt": {
         "on_submit": "optimusland.utils.purchase_receipt.create_production_plan",
-        "validate": "optimusland.utils.purchase_receipt.set_batch_no",
+        "validate": "optimusland.utils.purchase_receipt.warn_potato_items_without_batch",
     },
     "Sales Invoice": {
-        "validate": "optimusland.utils.sales_invoice.get_delivery_note_items"
+        "before_save": "optimusland.utils.sales_invoice.warn_unlinked_items"
     },
-    "Purchase Invoice": {
-        "validate": "optimusland.utils.purchase_invoice.get_purchase_receipt_items"
-    },
+#    "Purchase Invoice": {
+#        "validate": "optimusland.utils.purchase_invoice.get_purchase_receipt_items"
+#    },
 }
 
 # Scheduled Tasks
@@ -150,9 +150,9 @@ scheduler_events = {
 # 	"all": [
 # 		"optimusland.tasks.all"
 # 	],
- 	"daily": [
- 		"optimusland.tasks.daily"
- 	],
+#   "daily": [
+#       "optimusland.tasks.daily"
+#   ],
 # 	"hourly": [
 # 		"optimusland.tasks.hourly"
 # 	],
