@@ -1,25 +1,136 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "naming_series:",
  "creation": "2025-07-31 11:37:57.050063",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_u0xf"
+  "naming_series",
+  "slip_number",
+  "supplier",
+  "village",
+  "column_break_hzik",
+  "posting_date",
+  "number_of_boxes",
+  "harvest",
+  "section_break_jfal",
+  "items",
+  "section_break_cccn",
+  "notes",
+  "section_break_ieuz",
+  "weigher_signature",
+  "column_break_bvqd",
+  "supplier_signature"
  ],
  "fields": [
   {
-   "fieldname": "section_break_u0xf",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Naming Series",
+   "options": "WS-.YYYY.-",
+   "print_hide": 1,
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "village",
+   "fieldtype": "Data",
+   "label": "Village"
+  },
+  {
+   "fieldname": "column_break_hzik",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "number_of_boxes",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Number of Boxes"
+  },
+  {
+   "fieldname": "harvest",
+   "fieldtype": "Select",
+   "label": "Harvest",
+   "options": "\nWinter\nSpring"
+  },
+  {
+   "fieldname": "section_break_cccn",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "section_break_ieuz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "weigher_signature",
+   "fieldtype": "Signature",
+   "label": "Weigher Signature"
+  },
+  {
+   "fieldname": "column_break_bvqd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "supplier_signature",
+   "fieldtype": "Signature",
+   "label": "Supplier Signature"
+  },
+  {
+   "fieldname": "section_break_jfal",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Weight Slip Item"
+  },
+  {
+   "fieldname": "slip_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Slip Number",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-07-31 11:37:57.050063",
+ "links": [
+  {
+   "link_doctype": "Purchase Receipt",
+   "link_fieldname": "custom_weight_slip"
+  }
+ ],
+ "modified": "2025-07-31 14:46:07.245481",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Weight Slip",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -36,7 +147,10 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "slip_number,supplier",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "slip_number"
 }

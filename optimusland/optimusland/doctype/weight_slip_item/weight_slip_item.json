@@ -6,19 +6,62 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "section_break_qnhd"
+  "variety",
+  "size",
+  "notes",
+  "kilogram",
+  "quantity",
+  "jumbo_number"
  ],
  "fields": [
   {
-   "fieldname": "section_break_qnhd",
-   "fieldtype": "Section Break"
+   "columns": 2,
+   "fieldname": "variety",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Variety"
+  },
+  {
+   "columns": 1,
+   "fieldname": "size",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Size"
+  },
+  {
+   "columns": 1,
+   "fieldname": "jumbo_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Jumbo Number"
+  },
+  {
+   "columns": 1,
+   "fieldname": "quantity",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Quantity"
+  },
+  {
+   "columns": 1,
+   "fieldname": "kilogram",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Kilogram"
+  },
+  {
+   "columns": 4,
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Notes"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-31 11:38:35.799828",
+ "modified": "2025-07-31 14:29:55.807139",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Weight Slip Item",
