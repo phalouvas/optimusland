@@ -31,6 +31,6 @@ def warn_unlinked_items(sales_invoice, method=None):
             title="Unlinked Potatoes Items",
             indicator="red"
         )
-        #from frappe import ValidationError
-        #raise ValidationError("Unlinked 'Potatoes' items found. Please link all 'Potatoes' items to a Delivery Note before saving.")
+        from frappe import ValidationError
+        raise ValidationError("Unlinked 'Potatoes' items found. Please link all 'Potatoes' items to a Delivery Note before saving.")
         
