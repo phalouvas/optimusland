@@ -133,7 +133,7 @@ doctype_list_js = {"Batch" : "public/js/batch_list.js"}
 doc_events = {
     "Purchase Receipt": {
         "on_submit": "optimusland.utils.purchase_receipt.create_production_plan",
-        "validate": "optimusland.utils.purchase_receipt.warn_potato_items_without_batch",
+        "validate": "optimusland.utils.purchase_receipt.set_batch_no",
     },
     "Sales Invoice": {
         "before_save": "optimusland.utils.sales_invoice.warn_unlinked_items"
