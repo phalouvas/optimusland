@@ -13,6 +13,11 @@ class DeliveryNoteBillingWizard(Document):
         # Initialize table fieldnames for virtual doctype
         self._table_fieldnames = []
         
+        # Set _action attribute for Frappe v16 compatibility
+        # This prevents AttributeError during init_singles() in site creation
+        if not hasattr(self, '_action'):
+            self._action = "save"
+        
         # Set required attributes for virtual doctype
         if not hasattr(self, 'modified'):
             self.modified = now()
@@ -68,6 +73,15 @@ class DeliveryNoteBillingWizard(Document):
 
     def delete(self):
         """Override to prevent database delete"""
+        pass
+
+    def _validate_links(self):
+        """Skip link validation for virtual doctype.
+        
+        Virtual doctypes don't have real database links to validate.
+        This override prevents AttributeError in Frappe v16 during init_singles()
+        when _action attribute is checked in parent class _validate_links().
+        """
         pass
 
     @property
