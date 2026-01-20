@@ -63,15 +63,8 @@ class DeliveryNoteBillingWizard(Document):
         pass
 
     def check_if_latest(self):
-        """Override to prevent version check for virtual doctype.
-
-        Frappe v16's validation expects `_action` to be set before link
-        validation. Since this virtual singleton skips normal save flow,
-        set a safe default so `_validate_links` does not error during
-        install/site creation.
-        """
-        if not hasattr(self, "_action"):
-            self._action = "save"
+        """Override to prevent version check for virtual doctype"""
+        pass
 
     def delete(self):
         """Override to prevent database delete"""
