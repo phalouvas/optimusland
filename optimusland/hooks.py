@@ -6,6 +6,17 @@ app_email = "info@kainotomo.com"
 app_license = "mit"
 # required_apps = []
 
+# Each item in the list will be shown as an app in the apps page
+add_to_apps_screen = [
+    {
+        "name": "optimusland",
+        "logo": "/assets/optimusland/images/logo_314x314.png",
+        "title": "Optimusland",
+        "route": "/optimusland"
+# 		"has_permission": "optimusland.api.permission.has_app_permission"
+    }
+]
+
 # Includes in <head>
 # ------------------
 
