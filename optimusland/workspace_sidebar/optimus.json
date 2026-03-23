@@ -1,6 +1,6 @@
 {
  "app": "optimusland",
- "creation": "2026-03-23 11:14:54.710037",
+ "creation": "2026-03-23 11:55:16.240324",
  "docstatus": 0,
  "doctype": "Workspace Sidebar",
  "header_icon": "heart-active",
@@ -149,7 +149,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-23 11:20:55.496187",
+ "modified": "2026-03-23 14:47:46.876325",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Optimus",
