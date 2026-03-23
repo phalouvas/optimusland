@@ -10,8 +10,9 @@ import json
 class DeliveryNoteBillingWizard(Document):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Initialize table fieldnames for virtual doctype
-        self._table_fieldnames = []
+        # Initialize table fieldnames for virtual doctype (must be a mapping)
+        # Frappe core expects a dict-like object with .items(), not a list.
+        self._table_fieldnames = {}
         
         # Set _action attribute for Frappe v16 compatibility
         # This prevents AttributeError during init_singles() in site creation

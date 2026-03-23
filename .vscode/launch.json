@@ -8,7 +8,7 @@
             "type": "editor-browser",
             "request": "launch",
             "name": "Launch in integrated browser",
-            "url": "http://localhost:8001"
+            "url": "http://tmp.localhost:8001"
         },
         {
             "type": "editor-browser",
@@ -19,14 +19,15 @@
             "type": "msedge",
             "request": "launch",
             "name": "Launch Edge against localhost",
-            "url": "http://localhost:8001",
+            "url": "http://tmp.localhost:8001",
             "webRoot": "${workspaceFolder}"
         },
         {
             "name": "Bench Web",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/v16/apps/frappe/frappe/utils/bench_helper.py",
+            "python": "${workspaceFolder}/../../env/bin/python3",
+            "program": "${workspaceFolder}/../../apps/frappe/frappe/utils/bench_helper.py",
             "args": [
                 "frappe",
                 "serve",
@@ -35,23 +36,29 @@
                 "--noreload",
                 "--nothreading"
             ],
-            "cwd": "${workspaceFolder}/v16/sites",
+            "cwd": "${workspaceFolder}/../../sites",
             "env": {
                 "DEV_SERVER": "1"
+            }
+            ,
+            "serverReadyAction": {
+                "pattern": "http://tmp.localhost:(\\d+)",
+                "uriFormat": "http://tmp.localhost:%s",
+                "action": "openExternally"
             }
         },
         {
             "name": "Bench Short Worker",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/v16/apps/frappe/frappe/utils/bench_helper.py",
+            "program": "${workspaceFolder}/../../apps/frappe/frappe/utils/bench_helper.py",
             "args": [
                 "frappe",
                 "worker",
                 "--queue",
                 "short"
             ],
-            "cwd": "${workspaceFolder}/v16/sites",
+            "cwd": "${workspaceFolder}/../../sites",
             "env": {
                 "DEV_SERVER": "1"
             }
@@ -60,14 +67,14 @@
             "name": "Bench Default Worker",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/v16/apps/frappe/frappe/utils/bench_helper.py",
+            "program": "${workspaceFolder}/../../apps/frappe/frappe/utils/bench_helper.py",
             "args": [
                 "frappe",
                 "worker",
                 "--queue",
                 "default"
             ],
-            "cwd": "${workspaceFolder}/v16/sites",
+            "cwd": "${workspaceFolder}/../../sites",
             "env": {
                 "DEV_SERVER": "1"
             }
@@ -76,14 +83,14 @@
             "name": "Bench Long Worker",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/v16/apps/frappe/frappe/utils/bench_helper.py",
+            "program": "${workspaceFolder}/../../apps/frappe/frappe/utils/bench_helper.py",
             "args": [
                 "frappe",
                 "worker",
                 "--queue",
                 "long"
             ],
-            "cwd": "${workspaceFolder}/v16/sites",
+            "cwd": "${workspaceFolder}/../../sites",
             "env": {
                 "DEV_SERVER": "1"
             }
@@ -112,6 +119,22 @@
             "configurations": [
                 "Bench Web",
                 "Honcho SocketIO Watch Schedule Worker"
+            ],
+            "stopAll": true
+        },
+        {
+            "name": "Bench + Edge",
+            "configurations": [
+                "Bench Web",
+                "Launch Edge against localhost"
+            ],
+            "stopAll": true
+        },
+        {
+            "name": "Bench + Integrated Browser",
+            "configurations": [
+                "Bench Web",
+                "Launch in integrated browser"
             ],
             "stopAll": true
         }
