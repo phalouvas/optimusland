@@ -26,7 +26,8 @@
             "name": "Bench Web",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/v16/apps/frappe/frappe/utils/bench_helper.py",
+            "python": "${workspaceFolder}/../../env/bin/python3",
+            "program": "${workspaceFolder}/../../apps/frappe/frappe/utils/bench_helper.py",
             "args": [
                 "frappe",
                 "serve",
@@ -35,7 +36,7 @@
                 "--noreload",
                 "--nothreading"
             ],
-            "cwd": "${workspaceFolder}/v16/sites",
+            "cwd": "${workspaceFolder}/../../sites",
             "env": {
                 "DEV_SERVER": "1"
             }
@@ -44,14 +45,14 @@
             "name": "Bench Short Worker",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/v16/apps/frappe/frappe/utils/bench_helper.py",
+            "program": "${workspaceFolder}/../../apps/frappe/frappe/utils/bench_helper.py",
             "args": [
                 "frappe",
                 "worker",
                 "--queue",
                 "short"
             ],
-            "cwd": "${workspaceFolder}/v16/sites",
+            "cwd": "${workspaceFolder}/../../sites",
             "env": {
                 "DEV_SERVER": "1"
             }
@@ -60,14 +61,14 @@
             "name": "Bench Default Worker",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/v16/apps/frappe/frappe/utils/bench_helper.py",
+            "program": "${workspaceFolder}/../../apps/frappe/frappe/utils/bench_helper.py",
             "args": [
                 "frappe",
                 "worker",
                 "--queue",
                 "default"
             ],
-            "cwd": "${workspaceFolder}/v16/sites",
+            "cwd": "${workspaceFolder}/../../sites",
             "env": {
                 "DEV_SERVER": "1"
             }
@@ -76,14 +77,14 @@
             "name": "Bench Long Worker",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/v16/apps/frappe/frappe/utils/bench_helper.py",
+            "program": "${workspaceFolder}/../../apps/frappe/frappe/utils/bench_helper.py",
             "args": [
                 "frappe",
                 "worker",
                 "--queue",
                 "long"
             ],
-            "cwd": "${workspaceFolder}/v16/sites",
+            "cwd": "${workspaceFolder}/../../sites",
             "env": {
                 "DEV_SERVER": "1"
             }
