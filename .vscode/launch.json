@@ -8,7 +8,7 @@
             "type": "editor-browser",
             "request": "launch",
             "name": "Launch in integrated browser",
-            "url": "http://localhost:8001"
+            "url": "http://tmp.localhost:8001"
         },
         {
             "type": "editor-browser",
@@ -19,7 +19,7 @@
             "type": "msedge",
             "request": "launch",
             "name": "Launch Edge against localhost",
-            "url": "http://localhost:8001",
+            "url": "http://tmp.localhost:8001",
             "webRoot": "${workspaceFolder}"
         },
         {
@@ -39,6 +39,12 @@
             "cwd": "${workspaceFolder}/../../sites",
             "env": {
                 "DEV_SERVER": "1"
+            }
+            ,
+            "serverReadyAction": {
+                "pattern": "http://tmp.localhost:(\\d+)",
+                "uriFormat": "http://tmp.localhost:%s",
+                "action": "openExternally"
             }
         },
         {
@@ -113,6 +119,22 @@
             "configurations": [
                 "Bench Web",
                 "Honcho SocketIO Watch Schedule Worker"
+            ],
+            "stopAll": true
+        },
+        {
+            "name": "Bench + Edge",
+            "configurations": [
+                "Bench Web",
+                "Launch Edge against localhost"
+            ],
+            "stopAll": true
+        },
+        {
+            "name": "Bench + Integrated Browser",
+            "configurations": [
+                "Bench Web",
+                "Launch in integrated browser"
             ],
             "stopAll": true
         }
