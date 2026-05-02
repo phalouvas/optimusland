@@ -12,9 +12,8 @@ Optimusland is a custom Frappe app for "Optimus Land" (KAINOTOMO PH LTD) that pr
 - **Frontend hooks** injecting custom JavaScript into 7 standard DocTypes
 
 **Repository**: `phalouvas/optimusland`  
-**Branch**: `version-16` (development)  
-**Default branch**: `develop`  
-**Deployment target**: Frappe v15 (note version mismatch between workspace and production)
+**Default branch**: `main`  
+**Deployment target**: Frappe v15 (deploy configs reference v15; app reports version 16.0.1 — ensure compatibility when making changes)
 
 ## Development Environment
 
@@ -34,14 +33,16 @@ Optimusland is a custom Frappe app for "Optimus Land" (KAINOTOMO PH LTD) that pr
 ## Build and Test
 
 ### Running Tests
-- **Standard Frappe test command**: `bench test-site optimusland`
+- **Standard Frappe test command**: `bench run-tests --app optimusland`
 - **Test files location**:
   - `optimusland/optimusland/doctype/delivery_note_billing_wizard/test_delivery_note_billing_wizard.py`
   - `optimusland/optimusland/doctype/weight_slip/test_weight_slip.py`
   - `optimusland/optimusland/report/unbilled_delivery_notes/test_report.py`
 
-### No Explicit Build Step
-The app uses Frappe's standard bench workflow. Frontend assets are automatically bundled.
+### Building Frontend Assets
+- **Build app assets**: `bench build --app optimusland`
+- JS changes in `optimusland/public/js/` require a build to take effect
+- Custom DocType JS/JSON changes require `bench --site [site-name] export-fixtures --app optimusland`
 
 ### Docker Deployment (Production)
 Refer to **[deploy/README.md](deploy/README.md)** for detailed setup:
@@ -160,8 +161,8 @@ Single module: `Optimusland` (see `optimusland/modules.txt`)
 
 ### Writing a Test
 1. Extend `FrappeTestCase`
-2. Use `frappe.get_test_records()` for test data
-3. Follow patterns in existing test files
+2. Place tests in the relevant `doctype/` or `report/` directory
+3. Run with `bench run-tests --app optimusland --module <module-path>`
 
 ### Modifying the Wizard
 1. Understand tab-based workflow (`wizard_tab` field)
@@ -194,5 +195,5 @@ Single module: `Optimusland` (see `optimusland/modules.txt`)
 
 ---
 
-*Last updated: March 23, 2026*  
+*Last updated: May 2, 2026*  
 *For questions, refer to the repository owner: KAINOTOMO PH LTD (info@kainotomo.com)*
