@@ -1,7 +1,7 @@
 import frappe
 
 from erpnext.manufacturing.doctype.work_order.work_order import get_item_details, make_stock_entry
-from frappe.utils import add_to_date, flt, getdate, now_datetime, nowdate
+
 
 @frappe.whitelist()
 def create_production_plan(purchase_receipt, method=None):
@@ -22,7 +22,7 @@ def create_production_plan(purchase_receipt, method=None):
             "posting_date": purchase_receipt.posting_date,
         }
     )
-    
+
     for purchase_receipt_item in purchase_receipt.items:
         has_batch_no = frappe.db.get_value("Item", purchase_receipt_item.item_code, "has_batch_no")
         if has_batch_no:
@@ -54,16 +54,16 @@ def create_production_plan(purchase_receipt, method=None):
         "Work Order", fields=["name"], filters={"production_plan": pln.name}, as_list=1
     )
     for work_order in work_orders:
-        wo = frappe.get_doc("Work Order", work_order[0])        
+        wo = frappe.get_doc("Work Order", work_order[0])
         wo.submit()
-        
+
         batch_no = None
         for batch in batch_nos:
             if batch["item_code"] == wo.production_item:
                 batch_no = batch["batch_no"]
                 purchase_rate = batch["purchase_rate"]
                 break
-    
+
         se1 = frappe.get_doc(make_stock_entry(wo.name, "Material Transfer for Manufacture", wo.qty))
         se1.set_posting_time = 1
         se1.posting_date = purchase_receipt.posting_date
@@ -76,13 +76,54 @@ def create_production_plan(purchase_receipt, method=None):
         se2.set_posting_time = 1
         se2.posting_date = purchase_receipt.posting_date
         se2.posting_time = purchase_receipt.posting_time
+
+        fix_missing_accounts(se2)
+
         se2.insert()
         se2.submit()
-        
+
     pass
 
-def fix_stock_entry(se: dict, batch_no: str, item_code: str, purchase_rate: float):
-    
+
+def fix_missing_accounts(se):
+    """Ensure all items and additional costs have expense_account and cost_center set."""
+    company_default_expense = frappe.get_cached_value(
+        "Company", se.company, "stock_adjustment_account"
+    )
+    company_default_cost_center = frappe.get_cached_value(
+        "Company", se.company, "cost_center"
+    )
+
+    for item in se.items:
+        if not item.expense_account:
+            item.expense_account = frappe.db.get_value(
+                "Item Default", {"parent": item.item_code, "company": se.company}, "expense_account"
+            ) or company_default_expense
+        if not item.cost_center:
+            item.cost_center = frappe.db.get_value(
+                "Item Default", {"parent": item.item_code, "company": se.company}, "buying_cost_center"
+            ) or company_default_cost_center
+
+    for cost in se.get("additional_costs", []):
+        if not cost.expense_account:
+            cost.expense_account = company_default_expense
+
+
+def fix_stock_entry(se, batch_no, item_code, purchase_rate):
+    expense_account = frappe.db.get_value(
+        "Item Default", {"parent": item_code, "company": se.company}, "expense_account"
+    )
+    if not expense_account:
+        expense_account = frappe.get_cached_value(
+            "Company", se.company, "stock_adjustment_account"
+        )
+
+    cost_center = frappe.db.get_value(
+        "Item Default", {"parent": item_code, "company": se.company}, "buying_cost_center"
+    )
+    if not cost_center:
+        cost_center = frappe.get_cached_value("Company", se.company, "cost_center")
+
     source_item_exists = False
     for item in se.items:
         if item.item_code == item_code:
@@ -97,27 +138,28 @@ def fix_stock_entry(se: dict, batch_no: str, item_code: str, purchase_rate: floa
                 "use_serial_batch_fields": 1,
                 "is_finished_item": 0,
                 "basic_rate": purchase_rate,
+                "expense_account": expense_account,
+                "cost_center": cost_center,
             }
             if item.is_finished_item == 0:
                 source_item_exists = True
 
     if not source_item_exists:
-        se.append(
-            "items", source_item
-        )
+        se.append("items", source_item)
 
     se.items.reverse()
-            
+
     return se
 
+
 def set_batch_no(purchase_receipt, method=None):
-    
+
     # Get items with empty batch_no
     items_without_batch = []
     for item in purchase_receipt.items:
         if not item.batch_no:
             items_without_batch.append(item)
-    
+
     # Filter for items that should have batch numbers (has_batch_no=1) and belong to "Potatoes" item group
     batch_required_items = []
     for item in items_without_batch:
@@ -125,10 +167,10 @@ def set_batch_no(purchase_receipt, method=None):
         item_group = frappe.db.get_value("Item", item.item_code, "item_group")
         if has_batch_no == 1 and item_group == "Potatoes":
             batch_required_items.append(item)
-    
+
     # Loop through items that require batch numbers
     for item in batch_required_items:
-        
+
         # Search for existing batches that match our criteria
         batches = frappe.get_all(
             "Batch",
@@ -161,8 +203,6 @@ def set_batch_no(purchase_receipt, method=None):
             new_batch.custom_supplier_optimus = purchase_receipt.supplier
             new_batch.custom_prefix = item.custom_batch_prefix
             new_batch.insert()
-            
+
             # Assign the new batch to the item
             item.batch_no = new_batch.name
-    
-    frappe.db.commit()
