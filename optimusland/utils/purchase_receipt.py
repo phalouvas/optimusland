@@ -81,8 +81,21 @@ def create_production_plan(purchase_receipt, method=None):
         
     pass
 
-def fix_stock_entry(se: dict, batch_no: str, item_code: str, purchase_rate: float):
-    
+def fix_stock_entry(se, batch_no, item_code, purchase_rate):
+    expense_account = frappe.db.get_value(
+        "Item Default", {"parent": item_code, "company": se.company}, "expense_account"
+    )
+    if not expense_account:
+        expense_account = frappe.get_cached_value(
+            "Company", se.company, "stock_adjustment_account"
+        )
+
+    cost_center = frappe.db.get_value(
+        "Item Default", {"parent": item_code, "company": se.company}, "buying_cost_center"
+    )
+    if not cost_center:
+        cost_center = frappe.get_cached_value("Company", se.company, "cost_center")
+
     source_item_exists = False
     for item in se.items:
         if item.item_code == item_code:
@@ -97,17 +110,17 @@ def fix_stock_entry(se: dict, batch_no: str, item_code: str, purchase_rate: floa
                 "use_serial_batch_fields": 1,
                 "is_finished_item": 0,
                 "basic_rate": purchase_rate,
+                "expense_account": expense_account,
+                "cost_center": cost_center,
             }
             if item.is_finished_item == 0:
                 source_item_exists = True
 
     if not source_item_exists:
-        se.append(
-            "items", source_item
-        )
+        se.append("items", source_item)
 
     se.items.reverse()
-            
+
     return se
 
 def set_batch_no(purchase_receipt, method=None):
@@ -164,5 +177,3 @@ def set_batch_no(purchase_receipt, method=None):
             
             # Assign the new batch to the item
             item.batch_no = new_batch.name
-    
-    frappe.db.commit()
