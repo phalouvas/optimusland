@@ -10,9 +10,8 @@ frappe.ui.form.on('Delivery Note', {
                             label: __('Custom Shipping Cost'),
                             fieldname: 'shipping_cost',
                             fieldtype: 'Currency',
-                            description: __('Enter a custom shipping cost amount (must be greater than zero)'),
-                            reqd: 1,
-                            min: 0.01
+                            description: __('Enter a custom shipping cost amount (set to zero to clear)'),
+                            reqd: 0
                         },
                         {
                             label: __('Purchase Invoice'),
@@ -46,7 +45,7 @@ frappe.ui.form.on('Delivery Note', {
                         
                         // Ask for confirmation
                         frappe.confirm(
-                            __('Are you sure you want to add shipping cost? This action cannot be undone.'),
+                            __('Are you sure you want to update shipping cost?'),
                             function() {
                                 // Call the server method with the form values
                                 frappe.call({
@@ -73,6 +72,31 @@ frappe.ui.form.on('Delivery Note', {
                 
                 d.show();
             }).addClass("btn-danger");
+
+            if (frm.doc.custom_is_shipping_cost_added) {
+                frm.add_custom_button(__('Remove Shipping Cost'), function () {
+                    frappe.confirm(
+                        __('Are you sure you want to remove the shipping cost from this Delivery Note?'),
+                        function() {
+                            frappe.call({
+                                method: "optimusland.utils.delivery_note.remove_shipping_cost",
+                                args: {
+                                    delivery_note_name: frm.doc.name
+                                },
+                                callback: function (response) {
+                                    if (response.message) {
+                                        frappe.show_alert({
+                                            message: __('Shipping Cost removed successfully'),
+                                            indicator: 'green'
+                                        });
+                                        frm.reload_doc();
+                                    }
+                                }
+                            });
+                        }
+                    );
+                }).addClass("btn-danger");
+            }
         }
     }
 });
