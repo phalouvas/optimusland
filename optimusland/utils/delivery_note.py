@@ -46,3 +46,31 @@ def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_in
     )
 
     return True
+
+
+@frappe.whitelist()
+def remove_shipping_cost(delivery_note_name: str):
+    """Remove shipping cost from a Delivery Note"""
+
+    doc = frappe.get_doc("Delivery Note", delivery_note_name)
+
+    # Return if the delivery note is not found or is not submitted
+    if not doc or doc.docstatus != 1:
+        frappe.throw("Delivery Note not found or not submitted.")
+
+    # Return if shipping cost was never added
+    if not doc.custom_is_shipping_cost_added:
+        frappe.throw("No shipping cost to remove.")
+
+    frappe.db.set_value("Delivery Note", delivery_note_name, {
+        "custom_shipping_cost": 0,
+        "custom_shipping_rate": 0,
+        "custom_shipping_purchase_invoice": None,
+        "custom_is_shipping_cost_added": 0
+    }, update_modified=False)
+
+    frappe.db.commit()
+
+    doc.add_comment("Info", "Shipping cost removed.")
+
+    return True
