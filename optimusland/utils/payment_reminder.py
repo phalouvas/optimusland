@@ -212,7 +212,8 @@ def _send_sms(recipient, message):
 	Returns True if sent successfully, False if SMS gateway is not configured.
 	"""
 	try:
-		from frappe.core.doctype.sms_center.sms_center import send_sms
+		from frappe.core.doctype.sms_settings.sms_settings import send_sms
+
 		send_sms([recipient], message)
 		return True
 	except Exception:
