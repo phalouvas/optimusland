@@ -1,0 +1,111 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-06-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "payment_reminders_enabled",
+  "column_break_1",
+  "payment_reminders_email",
+  "payment_reminders_sms",
+  "section_break_templates",
+  "templates",
+  "section_break_variables_help",
+  "html_help"
+ ],
+ "fields": [
+  {
+   "fieldname": "payment_reminders_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Payment Reminders"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "payment_reminders_enabled",
+   "fieldname": "payment_reminders_email",
+   "fieldtype": "Check",
+   "default": "1",
+   "label": "Send Email Reminders"
+  },
+  {
+   "depends_on": "payment_reminders_enabled",
+   "fieldname": "payment_reminders_sms",
+   "fieldtype": "Check",
+   "default": "1",
+   "label": "Send SMS Reminders"
+  },
+  {
+   "depends_on": "payment_reminders_enabled",
+   "fieldname": "section_break_templates",
+   "fieldtype": "Section Break",
+   "label": "Payment Reminder Templates"
+  },
+  {
+   "depends_on": "payment_reminders_enabled",
+   "fieldname": "templates",
+   "fieldtype": "Table",
+   "label": "Message Templates",
+   "options": "Payment Reminder Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_variables_help",
+   "fieldtype": "Section Break",
+   "label": "Template Variables"
+  },
+  {
+   "fieldname": "html_help",
+   "fieldtype": "HTML",
+   "options": "<p>The following variables can be used in Subject and Message templates. They will be replaced with actual values when the reminder is sent.</p>\n<ul>\n<li><code>{{ invoice_name }}</code> — Sales Invoice number</li>\n<li><code>{{ customer_name }}</code> — Customer name</li>\n<li><code>{{ due_date }}</code> — Invoice due date</li>\n<li><code>{{ posting_date }}</code> — Invoice posting date</li>\n<li><code>{{ total }}</code> — Invoice total amount</li>\n<li><code>{{ outstanding_amount }}</code> — Outstanding balance</li>\n<li><code>{{ days_overdue }}</code> — Number of days past due</li>\n<li><code>{{ reminder_level }}</code> — Reminder level (1-4)</li>\n<li><code>{{ company }}</code> — Company name</li>\n</ul>"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-06-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Optimusland",
+ "name": "Optimus General Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "print": 0,
+   "read": 1,
+   "role": "Accounts User",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

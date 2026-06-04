@@ -161,9 +161,9 @@ scheduler_events = {
 # 	"all": [
 # 		"optimusland.tasks.all"
 # 	],
-#   "daily": [
-#       "optimusland.tasks.daily"
-#   ],
+    "daily": [
+        "optimusland.tasks.daily"
+    ],
 # 	"hourly": [
 # 		"optimusland.tasks.hourly"
 # 	],
