@@ -103,13 +103,15 @@ def _process_invoice(invoice, settings, today_date, email_enabled, sms_enabled):
 		return
 
 	# Common context for template rendering
+	currency = invoice.currency or frappe.db.get_value("Company", invoice.company, "default_currency") or "EUR"
 	base_context = {
 		"invoice_name": invoice.name,
 		"customer_name": invoice.customer_name or invoice.customer,
 		"due_date": str(invoice.due_date or ""),
 		"posting_date": str(invoice.posting_date or ""),
-		"total": flt(invoice.grand_total),
-		"outstanding_amount": flt(invoice.outstanding_amount),
+		"total": frappe.utils.fmt_money(flt(invoice.grand_total), currency=currency),
+		"outstanding_amount": frappe.utils.fmt_money(flt(invoice.outstanding_amount), currency=currency),
+		"currency": currency,
 		"days_overdue": days_overdue,
 		"company": invoice.company or "",
 	}
@@ -177,13 +179,16 @@ def _parse_sent_levels(raw_value):
 
 
 def _get_applicable_levels(days_overdue, already_sent):
-	"""Determine which reminder levels should fire, skipping already-sent ones."""
+	"""Return the lowest reminder level that is due and not yet sent.
+
+	Only one level is returned per run to ensure progressive escalation
+	over time (one reminder per day on the scheduled task).
+	"""
 	thresholds = {1: 1, 2: 10, 3: 20, 4: 30}
-	applicable = []
 	for level, threshold in sorted(thresholds.items()):
 		if days_overdue >= threshold and level not in already_sent:
-			applicable.append(level)
-	return applicable
+			return [level]
+	return []
 
 
 def _get_template(settings, level, channel):
