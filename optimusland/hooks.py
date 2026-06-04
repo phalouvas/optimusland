@@ -87,7 +87,7 @@ doctype_list_js = {"Batch" : "public/js/batch_list.js"}
 # ------------
 
 # before_install = "optimusland.install.before_install"
-# after_install = "optimusland.install.after_install"
+after_install = "optimusland.utils.setup.after_migrate"
 
 # Uninstallation
 # ------------
