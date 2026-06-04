@@ -141,8 +141,8 @@ def _process_invoice(invoice, settings, today_date, email_enabled, sms_enabled):
 					)
 					level_sent_channels.append("Email")
 				elif channel == "SMS":
-					_send_sms(recipient, rendered_message)
-					level_sent_channels.append("SMS")
+					if _send_sms(recipient, rendered_message):
+						level_sent_channels.append("SMS")
 			except Exception as e:
 				frappe.log_error(
 					title=_("Payment Reminder Send Failed"),
@@ -209,14 +209,15 @@ def _get_customer_mobile(customer_name):
 def _send_sms(recipient, message):
 	"""Send SMS via Frappe's SMS Center if configured.
 
-	If SMS Settings are not configured, this is skipped silently.
+	Returns True if sent successfully, False if SMS gateway is not configured.
 	"""
 	try:
 		from frappe.core.doctype.sms_center.sms_center import send_sms
 		send_sms([recipient], message)
+		return True
 	except Exception:
 		# SMS gateway not configured — skip gracefully
-		pass
+		return False
 
 
 def _comment_on_invoice(invoice_name, level, channels):
