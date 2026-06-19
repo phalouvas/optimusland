@@ -24,6 +24,7 @@ def match_all_delivery_notes_to_invoices(customer_name: str):
         LEFT JOIN `tabSales Invoice` cn ON cn.return_against = si.name AND cn.docstatus = 1
         WHERE si.customer = %s 
         AND si.docstatus = 1
+        AND (sii.delivery_note IS NULL OR sii.delivery_note = '')
         AND cn.name IS NULL
         ORDER BY si.posting_date
     """, customer_name, as_dict=1)
