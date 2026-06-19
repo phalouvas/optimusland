@@ -100,19 +100,19 @@ def fix_to_bill_delivery_note_status():
         INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
         LEFT JOIN `tabSales Invoice` cn ON cn.return_against = si.name AND cn.docstatus = 1
         WHERE si.docstatus = 1
-        AND (sii.delivery_note IS NULL OR sii.delivery_note = '')
+        AND sii.delivery_note IS NOT NULL
+        AND sii.delivery_note != ''
         AND cn.name IS NULL
         ORDER BY si.posting_date
     """, as_dict=1)
 
     for delivery_note_item in delivery_note_items:
 
-        if delivery_note_item.get("parent") == "MAT-DN-2025-00355":
-            pass
         matching_invoice_items = [
             sii for sii in sales_invoice_items
             if sii.get("item_code") == delivery_note_item.get("item_code")
             and sii.get("customer") == delivery_note_item.get("customer")
+            and sii.get("delivery_note") == delivery_note_item.get("parent")
         ]
         for invoice_item in matching_invoice_items:
             
