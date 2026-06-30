@@ -1,25 +1,19 @@
 #!/bin/bash
-# Pre-push hook: run tests before allowing push to version-16
+# Pre-push hook: run tests before allowing any push
 # Install: cp this file to .git/hooks/pre-push && chmod +x .git/hooks/pre-push
 
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "🚀 Running tests before push..."
 
-# Only enforce tests when pushing to version-16 or main
-if [ "$BRANCH" = "version-16" ] || [ "$BRANCH" = "main" ]; then
-    echo "🚀 Running tests before push to $BRANCH..."
-    
-    cd /workspace/development/v16
-    
-    bench run-tests --app optimusland 2>&1
-    
-    if [ $? -ne 0 ]; then
-        echo ""
-        echo "❌ TESTS FAILED — push rejected."
-        echo "   Fix the failing tests before pushing."
-        exit 1
-    fi
-    
-    echo "✅ All tests passed — push allowed."
+cd /workspace/development/v16
+
+bench run-tests --app optimusland 2>&1
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ TESTS FAILED — push rejected."
+    echo "   Fix the failing tests before pushing."
+    exit 1
 fi
 
+echo "✅ All tests passed — push allowed."
 exit 0
