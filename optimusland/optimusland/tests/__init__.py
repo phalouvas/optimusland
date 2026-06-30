@@ -23,17 +23,43 @@ def get_or_create_test_company():
 	if company and frappe.db.exists("Company", company):
 		return frappe.get_doc("Company", company)
 
-	# Fallback: create a minimal test company
-	if not frappe.db.exists("Company", "_Test Company"):
-		from erpnext.setup.setup_wizard.operations.install_fixtures import create_single_company
-		create_single_company(
-			company_name="_Test Company",
-			abbr="_TC",
-			company_group="",
-			chart_of_accounts="Standard",
-			domain="Services",
-		)
-	return frappe.get_doc("Company", "_Test Company")
+	# Look up the first company in the DB (created by bench new-site / setup wizard)
+	company_name = frappe.db.get_value("Company", {}, "name")
+	if company_name:
+		return frappe.get_doc("Company", company_name)
+
+	# Last resort: create a minimal test company from scratch
+	company_name = "_Test Company"
+	abbr = "_TC"
+
+	if not frappe.db.exists("Company", company_name):
+		# Create Fiscal Year first (required for company creation)
+		from datetime import date
+		today = date.today()
+		fy_start = date(today.year, 1, 1)
+		fy_end = date(today.year, 12, 31)
+		fy_name = f"{today.year}"
+
+		if not frappe.db.exists("Fiscal Year", fy_name):
+			frappe.get_doc({
+				"doctype": "Fiscal Year",
+				"year": fy_name,
+				"year_start_date": fy_start,
+				"year_end_date": fy_end,
+			}).insert(ignore_permissions=True)
+
+		frappe.get_doc({
+			"doctype": "Company",
+			"company_name": company_name,
+			"abbr": abbr,
+			"default_currency": "EUR",
+			"country": "Greece",
+			"domain": "Services",
+			"chart_of_accounts": "Standard",
+			"enable_perpetual_inventory": 1,
+		}).insert(ignore_permissions=True)
+
+	return frappe.get_doc("Company", company_name)
 
 
 # ---------------------------------------------------------------------------
