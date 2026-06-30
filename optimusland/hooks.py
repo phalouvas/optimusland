@@ -149,6 +149,9 @@ doc_events = {
     "Sales Invoice": {
         "before_save": "optimusland.utils.sales_invoice.warn_unlinked_items"
     },
+    "Delivery Note": {
+        "before_submit": "optimusland.utils.delivery_note.validate_batch_manufacture"
+    },
 #    "Purchase Invoice": {
 #        "validate": "optimusland.utils.purchase_invoice.get_purchase_receipt_items"
 #    },
