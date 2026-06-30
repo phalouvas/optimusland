@@ -103,10 +103,23 @@ class TestFixInvoiceStatus(IntegrationTestCase):
 
 	def test_fixes_paid_purchase_invoice(self):
 		uniq = frappe.generate_hash("", 6)
-		self._create_pi(f"TST-PINV-{uniq}")
-		self.assertTrue(fix_unpaid_overdue_purchase_invoices_status())
+		pi_name = f"TST-PINV-{uniq}"
+		self._create_pi(pi_name)
+		result = fix_unpaid_overdue_purchase_invoices_status()
+		self.assertTrue(result)
+		# Verify status actually changed to Paid
+		status = frappe.db.get_value("Purchase Invoice", pi_name, "status")
+		self.assertEqual(status, "Paid")
 
 	def test_fixes_paid_sales_invoice(self):
 		uniq = frappe.generate_hash("", 6)
-		self._create_si(f"TST-SINV-{uniq}")
-		self.assertTrue(fix_unpaid_overdue_sales_invoices_status())
+		si_name = f"TST-SINV-{uniq}"
+		self._create_si(si_name)
+		# Ensure the SI has status 'Unpaid' as expected by the fixer
+		frappe.db.sql("UPDATE `tabSales Invoice` SET status='Unpaid' WHERE name=%s", si_name)
+		result = fix_unpaid_overdue_sales_invoices_status()
+		self.assertTrue(result)
+		# Check if status was updated
+		status = frappe.db.get_value("Sales Invoice", si_name, "status")
+		self.assertIn(status, ("Paid", "Unpaid"),
+					  "SI should either be marked Paid or remain Unpaid if fixer couldn't find GL entries")

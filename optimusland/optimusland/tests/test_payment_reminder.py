@@ -20,9 +20,110 @@ from optimusland.utils.payment_reminder import (
 	_get_template,
 	_get_settings,
 	_get_overdue_invoices,
+	_get_customer_email,
+	_get_customer_mobile,
 	_process_invoice,
 	send_payment_reminders,
 )
+
+
+class TestCustomerContactHelpers(IntegrationTestCase):
+	"""Tests for _get_customer_email and _get_customer_mobile."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		from optimusland.optimusland.tests import get_or_create_test_customer
+		cls.customer = get_or_create_test_customer()
+
+	def test_get_customer_email_returns_none_if_not_set(self):
+		email = _get_customer_email(self.customer.name)
+		# frappe.db.get_value returns '' when field is NULL
+		self.assertIn(email, (None, ""),
+					  "Email should be None or empty when not set")
+
+	def test_get_customer_email_when_set(self):
+		frappe.db.set_value("Customer", self.customer.name, "email_id",
+							"test@example.com")
+		email = _get_customer_email(self.customer.name)
+		self.assertEqual(email, "test@example.com")
+
+	def test_get_customer_mobile_when_set(self):
+		frappe.db.set_value("Customer", self.customer.name, "mobile_no",
+							"+1234567890")
+		mobile = _get_customer_mobile(self.customer.name)
+		self.assertEqual(mobile, "+1234567890")
+
+
+class TestSendPaymentReminders(IntegrationTestCase):
+	"""End-to-end tests for send_payment_reminders."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		from optimusland.optimusland.tests import (
+			get_or_create_test_company,
+			get_or_create_test_warehouse,
+			get_or_create_test_customer,
+			get_or_create_test_potato_item,
+		)
+		cls.company = get_or_create_test_company()
+		cls.warehouse = get_or_create_test_warehouse(cls.company.name)
+		cls.customer = get_or_create_test_customer(cls.company.name)
+		cls.potato_item = get_or_create_test_potato_item(cls.company.name)
+
+	def setUp(self):
+		"""Enable reminders and ensure templates exist before each test."""
+		from optimusland.utils.setup import _seed_default_reminder_templates
+		_seed_default_reminder_templates()
+		settings = frappe.get_single("Optimus General Settings")
+		settings.payment_reminders_enabled = 1
+		settings.payment_reminders_email = 1
+		settings.save(ignore_permissions=True)
+
+	@patch("frappe.sendmail")
+	def test_sends_reminder_for_overdue_invoice(self, mock_sendmail):
+		"""Overdue SI with templates → reminder sent and tracked."""
+		from optimusland.optimusland.tests import create_test_sales_invoice
+
+		old_date = frappe.utils.add_days(frappe.utils.today(), -5)
+		si = create_test_sales_invoice(
+			items_data=[{
+				"item_code": self.potato_item.item_code,
+				"qty": 10,
+				"rate": 100.0,
+			}],
+			customer=self.customer.name,
+			company=self.company.name,
+			warehouse=self.warehouse.name,
+			posting_date=old_date,
+		)
+		frappe.db.set_value("Sales Invoice", si.name, "outstanding_amount", 1000)
+		# Set due_date to be overdue
+		frappe.db.set_value("Sales Invoice", si.name, "due_date",
+							frappe.utils.add_days(frappe.utils.today(), -3))
+
+		# Set contact email so reminder can be sent
+		frappe.db.set_value("Sales Invoice", si.name, "contact_email",
+							"customer@test.com")
+
+		send_payment_reminders()
+
+		# Verify reminder was tracked
+		sent = frappe.db.get_value("Sales Invoice", si.name,
+								   "custom_payment_reminders_sent")
+		self.assertIsNotNone(sent)
+		self.assertIn("1", sent or "[]")
+
+	@patch("frappe.sendmail")
+	def test_reminders_disabled_skips(self, mock_sendmail):
+		"""payment_reminders_enabled=0 → no processing."""
+		settings = frappe.get_single("Optimus General Settings")
+		settings.payment_reminders_enabled = 0
+		settings.save(ignore_permissions=True)
+
+		send_payment_reminders()
+		mock_sendmail.assert_not_called()
 
 
 class TestGetApplicableLevels(IntegrationTestCase):
@@ -163,6 +264,9 @@ class TestGetOverdueInvoices(IntegrationTestCase):
 def get_or_create_test_company():
 	"""Local import helper."""
 	from optimusland.optimusland.tests import get_or_create_test_company as _get
+def get_or_create_test_company():
+	"""Local import helper."""
+	from optimusland.optimusland.tests import get_or_create_test_company as _get
 	return _get()
 
 
@@ -180,4 +284,3 @@ def get_or_create_test_customer(company=None):
 def get_or_create_test_potato_item(company=None):
 	from optimusland.optimusland.tests import get_or_create_test_potato_item as _get
 	return _get(company)
-	return _get()
