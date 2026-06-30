@@ -23,6 +23,9 @@ from optimusland.optimusland.tests import (
 
 def before_tests():
 	"""Seed minimum test data shared across all test modules."""
+	# Enable Serial and Batch Bundle support (ERPNext v16 requirement)
+	frappe.db.set_single_value("Stock Settings", "enable_serial_and_batch_no_for_item", 1)
+
 	company = get_or_create_test_company()
 	get_or_create_test_warehouse(company.name)
 	get_or_create_test_supplier(company.name)
