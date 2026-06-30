@@ -246,9 +246,9 @@ def get_or_create_test_bom(item_code, company=None):
 		"items": [
 			{
 				"item_code": packaging_item.item_code,
-				"qty": 0.1,
+				"qty": 1.0,
 				"rate": 0.50,
-				"amount": 0.05,
+				"amount": 0.50,
 				"stock_uom": packaging_item.stock_uom,
 				"uom": packaging_item.stock_uom,
 				"conversion_factor": 1.0,
