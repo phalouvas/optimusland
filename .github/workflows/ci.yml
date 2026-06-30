@@ -29,7 +29,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.12"]
 
     steps:
       - name: Checkout
@@ -51,7 +51,7 @@ jobs:
 
       - name: Init Bench
         run: |
-          bench init --skip-redis-config-generation --frappe-branch version-16 frappe-bench --python ${{ matrix.python-version }}
+          bench init --skip-redis-config-generation --frappe-branch version-16 frappe-bench --python 3.12 --no-uv
 
       - name: Clone ERPNext
         run: |
