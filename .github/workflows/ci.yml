@@ -27,10 +27,6 @@ jobs:
           - 6379:6379
         options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=5s --health-retries=5
 
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,7 +34,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.14"
 
       - name: Install system dependencies
         run: |
@@ -51,7 +47,7 @@ jobs:
 
       - name: Init Bench
         run: |
-          bench init --skip-redis-config-generation --frappe-branch version-16 frappe-bench --python 3.12
+          bench init --skip-redis-config-generation --frappe-branch version-16 frappe-bench --python 3.14
 
       - name: Clone ERPNext
         run: |
