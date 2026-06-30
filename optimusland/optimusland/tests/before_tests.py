@@ -35,6 +35,8 @@ def _seed_stock(item_code, warehouse, qty, company):
 		"items": [{
 			"item_code": item_code,
 			"qty": qty,
+			"basic_rate": 1.0,
+			"basic_amount": qty * 1.0,
 			"t_warehouse": warehouse,
 			"uom": frappe.db.get_value("Item", item_code, "stock_uom"),
 			"conversion_factor": 1.0,
