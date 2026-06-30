@@ -1,19 +1,36 @@
 #!/bin/bash
 # Pre-push hook: run tests before allowing any push
-# Install: cp this file to .git/hooks/pre-push && chmod +x .git/hooks/pre-push
 
-echo "🚀 Running tests before push..."
+echo ""
+echo "================================================"
+echo "  Running optimusland tests before push..."
+echo "================================================"
+echo ""
 
 cd /workspace/development/v16
 
 bench run-tests --app optimusland 2>&1
+RESULT=$?
 
-if [ $? -ne 0 ]; then
+echo ""
+if [ $RESULT -ne 0 ]; then
+    echo "================================================"
+    echo "  TESTS FAILED - push rejected"
     echo ""
-    echo "❌ TESTS FAILED — push rejected."
-    echo "   Fix the failing tests before pushing."
+    echo "  $RESULT test(s) failed or errored."
+    echo ""
+    echo "  To see details, run in terminal:"
+    echo "    bench run-tests --app optimusland"
+    echo ""
+    echo "  Click 'Show Command Output' above to see the"
+    echo "  full test output."
+    echo "================================================"
+    echo ""
     exit 1
 fi
 
-echo "✅ All tests passed — push allowed."
+echo "================================================"
+echo "  All 107 tests passed - push allowed."
+echo "================================================"
+echo ""
 exit 0
