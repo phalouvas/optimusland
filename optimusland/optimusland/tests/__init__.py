@@ -28,12 +28,14 @@ def get_or_create_test_company():
 	if company_name:
 		return frappe.get_doc("Company", company_name)
 
-	# Last resort: create a minimal test company from scratch
+	# Last resort: create a minimal company via db_insert (bypasses
+	# on_update hooks like create_default_warehouses which need
+	# Warehouse Types, Chart of Accounts, etc. that don't exist in
+	# a bare test database).
 	company_name = "_Test Company"
 	abbr = "_TC"
 
 	if not frappe.db.exists("Company", company_name):
-		# Create Fiscal Year first (required for company creation)
 		from datetime import date
 		today = date.today()
 		fy_start = date(today.year, 1, 1)
@@ -41,14 +43,15 @@ def get_or_create_test_company():
 		fy_name = f"{today.year}"
 
 		if not frappe.db.exists("Fiscal Year", fy_name):
-			frappe.get_doc({
+			fy = frappe.get_doc({
 				"doctype": "Fiscal Year",
 				"year": fy_name,
 				"year_start_date": fy_start,
 				"year_end_date": fy_end,
-			}).insert(ignore_permissions=True)
+			})
+			fy.db_insert()
 
-		frappe.get_doc({
+		company = frappe.get_doc({
 			"doctype": "Company",
 			"company_name": company_name,
 			"abbr": abbr,
@@ -57,7 +60,8 @@ def get_or_create_test_company():
 			"domain": "Services",
 			"chart_of_accounts": "Standard",
 			"enable_perpetual_inventory": 1,
-		}).insert(ignore_permissions=True)
+		})
+		company.db_insert()
 
 	return frappe.get_doc("Company", company_name)
 
