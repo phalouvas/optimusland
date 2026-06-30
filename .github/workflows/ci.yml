@@ -89,7 +89,7 @@ jobs:
         run: |
           cd frappe-bench
           bench --site test_site execute erpnext.setup.setup_wizard.setup_wizard.setup_complete \
-            --kwargs '{"args":{"company_name":"Optimus Land","country":"Greece","currency":"EUR","chart_of_accounts":"Standard","domain":"Services","company_abbr":"OL","fy_start_date":"2026-01-01","fy_end_date":"2026-12-31","setup_demo":false}}'
+            --kwargs '{"args":{"company_name":"Optimus Land","country":"Greece","currency":"EUR","chart_of_accounts":"Standard","domain":"Services","company_abbr":"OL","fy_start_date":"2026-01-01","fy_end_date":"2026-12-31","setup_demo":False}}'
 
       - name: Run Tests
         run: |
