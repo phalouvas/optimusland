@@ -53,8 +53,19 @@ def create_production_plan(purchase_receipt, method=None):
     work_orders = frappe.get_all(
         "Work Order", fields=["name"], filters={"production_plan": pln.name}, as_list=1
     )
+
+    # Find WIP warehouse for the company (required by ERPNext v16 before submit)
+    company_abbr = frappe.db.get_value("Company", pln.company, "abbr")
+    wip_warehouse = frappe.db.get_value(
+        "Warehouse",
+        {"warehouse_name": "Work In Progress", "company": pln.company},
+        "name",
+    )
+
     for work_order in work_orders:
         wo = frappe.get_doc("Work Order", work_order[0])
+        if not wo.wip_warehouse and wip_warehouse:
+            wo.wip_warehouse = wip_warehouse
         wo.submit()
 
         batch_no = None
