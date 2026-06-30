@@ -36,10 +36,16 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y git curl wget libffi-dev libssl-dev wkhtmltopdf
+          npm install -g yarn
 
       - name: Install Bench
         run: |
