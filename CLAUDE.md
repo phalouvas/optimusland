@@ -83,7 +83,7 @@ Fallback when no prefix:
 
 ### Testing
 
-Tests use Frappe's `IntegrationTestCase` (not the deprecated `FrappeTestCase`). They run in an isolated `test_` database — never touching production data. Each test is transactionally isolated (auto-rollback after completion).
+Tests use Frappe's `IntegrationTestCase` (not the deprecated `FrappeTestCase`). They run in an isolated `test_` database — never touching production data. Each test is transactionally isolated (auto-rollback after completion). Tests run automatically via GitHub Actions on every PR to `version-16` (see `.github/workflows/ci.yml`).
 
 - **Run all tests**: `bench run-tests --app optimusland`
 - **Run a single module**: `bench run-tests --app optimusland --module optimusland.optimusland.tests.test_purchase_receipt_utils`
