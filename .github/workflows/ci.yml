@@ -51,7 +51,7 @@ jobs:
 
       - name: Init Bench
         run: |
-          bench init --skip-redis-config-generation --frappe-branch version-16 frappe-bench --python 3.12 --no-uv
+          bench init --skip-redis-config-generation --frappe-branch version-16 frappe-bench --python 3.12
 
       - name: Clone ERPNext
         run: |
