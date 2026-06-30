@@ -13,7 +13,29 @@ def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_in
     # Return if the delivery note is not found or is not submitted
     if not doc or doc.docstatus != 1:
         frappe.throw("Delivery Note not found or not submitted.")
-    
+
+    # Check for linked submitted Sales Invoices
+    linked_sis = frappe.db.get_all(
+        "Sales Invoice Item",
+        filters={
+            "delivery_note": delivery_note_name,
+            "docstatus": 1
+        },
+        fields=["parent"],
+        distinct=True,
+        pluck="parent"
+    )
+    if linked_sis:
+        si_list = ", ".join(linked_sis)
+        frappe.msgprint(
+            f"This Delivery Note already has linked Sales Invoice(s): <b>{si_list}</b>.<br><br>"
+            "✅ <b>The Profit Report will still be correct</b> — it reads shipping directly from the Delivery Note.<br><br>"
+            "❌ <b>The Sales Invoice(s) above will NOT be updated</b> — their cost and profit figures will be missing the shipping cost.<br><br>"
+            "<b>Recommended:</b> Cancel the invoice(s) first → add shipping cost → re-create the invoice(s).",
+            title="Linked Sales Invoices Detected",
+            indicator="orange"
+        )
+
     # Update the shipping cost field if provided
     if shipping_cost:
         doc.custom_shipping_cost = float(shipping_cost)
@@ -40,10 +62,19 @@ def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_in
         purchase_invoice_link = f'<a href="/app/purchase-invoice/{purchase_invoice}" >{purchase_invoice}</a>'
     else:
         purchase_invoice_link = "N/A"
-    doc.add_comment(
-        "Info",
-        f"Shipping cost of €{shipping_cost} added. Purchase Invoice: {purchase_invoice_link}"
-    )
+
+    if linked_sis:
+        si_list = ", ".join(linked_sis)
+        comment_text = (
+            f"⚠️ Shipping cost of €{shipping_cost} added. "
+            f"Purchase Invoice: {purchase_invoice_link}. "
+            f"Linked Sales Invoice(s) [{si_list}] already exist and were NOT updated. "
+            f"These invoices should be cancelled and re-created to include the shipping cost."
+        )
+    else:
+        comment_text = f"Shipping cost of €{shipping_cost} added. Purchase Invoice: {purchase_invoice_link}"
+
+    doc.add_comment("Info", comment_text)
 
     return True
 

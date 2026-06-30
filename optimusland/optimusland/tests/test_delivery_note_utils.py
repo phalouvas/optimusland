@@ -21,6 +21,7 @@ from optimusland.optimusland.tests import (
 	setup_item_valuation,
 	create_test_batch,
 	create_test_manufacture_stock_entry,
+	create_test_sales_invoice,
 )
 from optimusland.utils.delivery_note import (
 	add_shipping_cost,
@@ -149,6 +150,68 @@ class TestAddRemoveShippingCost(IntegrationTestCase):
 			self.customer.name, self.company.name, self.warehouse.name)
 		with self.assertRaises(frappe.ValidationError):
 			remove_shipping_cost(dn.name)
+
+	def test_add_shipping_cost_with_linked_sales_invoice(self):
+		"""Shipping cost can still be added when linked SI exists, but warning comment is logged."""
+		dn = _create_dn(
+			[{"item_code": self.ship_item.item_code, "qty": 1000, "rate": 0.50}],
+			self.customer.name, self.company.name, self.warehouse.name)
+
+		# Create a submitted Sales Invoice linked to the DN
+		create_test_sales_invoice(
+			[{"item_code": self.ship_item.item_code, "qty": 1000, "rate": 1.00,
+			  "delivery_note": dn.name}],
+			customer=self.customer.name, company=self.company.name,
+			warehouse=self.warehouse.name)
+
+		# Adding shipping should still succeed despite the linked SI
+		self.assertTrue(add_shipping_cost(dn.name, 100.0))
+
+		# Verify shipping was applied
+		dn.reload()
+		self.assertEqual(dn.custom_shipping_cost, 100.0)
+		self.assertEqual(dn.custom_shipping_rate, 0.10)
+		self.assertEqual(dn.custom_is_shipping_cost_added, 1)
+
+		# Verify a warning comment was logged about the linked SI not being updated
+		comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Delivery Note",
+				"reference_name": dn.name,
+				"comment_type": "Info",
+			},
+			fields=["content"],
+			order_by="creation desc",
+			limit=1,
+		)
+		self.assertTrue(
+			any("NOT updated" in c.content for c in comments),
+			"Expected warning comment about linked SI not being updated",
+		)
+
+	def test_add_shipping_cost_without_linked_sales_invoice(self):
+		"""Adding shipping cost without linked SI should work normally (no warning comment)."""
+		dn = _create_dn(
+			[{"item_code": self.ship_item.item_code, "qty": 1000, "rate": 0.50}],
+			self.customer.name, self.company.name, self.warehouse.name)
+
+		self.assertTrue(add_shipping_cost(dn.name, 100.0))
+
+		# Verify no warning about linked SIs in the comment
+		comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Delivery Note",
+				"reference_name": dn.name,
+				"comment_type": "Info",
+			},
+			fields=["content"],
+			order_by="creation desc",
+			limit=1,
+		)
+		self.assertFalse(
+			any("NOT updated" in c.content for c in comments),
+			"Expected no warning comment about linked SI",
+		)
 
 
 class TestValidateBatchManufacture(IntegrationTestCase):
