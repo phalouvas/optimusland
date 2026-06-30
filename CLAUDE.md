@@ -81,9 +81,19 @@ Fallback when no prefix:
 
 ## Commands
 
-- **Run tests**: `bench run-tests --app optimusland`
-- **Run a single test**: `bench run-tests --app optimusland --module optimusland.optimusland.doctype.delivery_note_billing_wizard.test_delivery_note_billing_wizard`
-- **Install app on a site**: `bench --site [site-name] install-app optimusland`
+### Testing
+
+Tests use Frappe's `IntegrationTestCase` (not the deprecated `FrappeTestCase`). They run in an isolated `test_` database — never touching production data. Each test is transactionally isolated (auto-rollback after completion).
+
+- **Run all tests**: `bench run-tests --app optimusland`
+- **Run a single module**: `bench run-tests --app optimusland --module optimusland.optimusland.tests.test_purchase_receipt_utils`
+- **Run by doctype**: `bench run-tests --app optimusland --doctype "Purchase Receipt"`
+
+Test fixtures live in `optimusland/optimusland/tests/__init__.py` (factory functions). The `before_tests` hook seeds minimum data (Company, Item, BOM, Supplier, Customer) in the test DB only.
+
+### Other commands
+
+- **Install app on a site**: `bench --site [site-name] install-app optimusland``
 - **Start dev server**: `bench start`
 - **Build frontend assets**: `bench build` (or `bench build --app optimusland`)
 - **Export fixtures** (after DocType changes): `bench --site [site-name] export-fixtures --app optimusland`

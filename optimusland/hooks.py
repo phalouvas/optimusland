@@ -181,7 +181,7 @@ scheduler_events = {
 # Testing
 # -------
 
-# before_tests = "optimusland.install.before_tests"
+before_tests = "optimusland.optimusland.tests.before_tests.before_tests"
 
 # Overriding Methods
 # ------------------------------
