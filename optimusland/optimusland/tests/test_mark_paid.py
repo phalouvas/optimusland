@@ -29,11 +29,6 @@ from optimusland.utils.purchase_invoice import mark_paid as mark_pi_paid
 class TestMarkSalesInvoicePaid(IntegrationTestCase):
 	"""Tests for sales_invoice.mark_paid."""
 
-	# TEMPORARY: This will fail to verify pre-push hook works
-	def test_push_hook_verification(self):
-		"""DELETE THIS TEST after verifying — intentionally fails."""
-		self.assertTrue(False, "Pre-push hook is working — this failure is intentional")
-
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
