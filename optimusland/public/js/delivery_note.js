@@ -43,30 +43,54 @@ frappe.ui.form.on('Delivery Note', {
                         // Close the dialog
                         d.hide();
                         
-                        // Ask for confirmation
-                        frappe.confirm(
-                            __('Are you sure you want to update shipping cost?'),
-                            function() {
-                                // Call the server method with the form values
-                                frappe.call({
-                                    method: "optimusland.utils.delivery_note.add_shipping_cost",
-                                    args: {
-                                        delivery_note_name: frm.doc.name,
-                                        shipping_cost: values.shipping_cost,
-                                        purchase_invoice: values.purchase_invoice
-                                    },
-                                    callback: function (response) {
-                                        if (response.message) {
-                                            frappe.show_alert({
-                                                message: __('Shipping Cost updated successfully'),
-                                                indicator: 'green'
-                                            });
-                                            frm.reload_doc();
-                                        }
+                        // Helper to call the server
+                        const doAddShipping = function() {
+                            frappe.call({
+                                method: "optimusland.utils.delivery_note.add_shipping_cost",
+                                args: {
+                                    delivery_note_name: frm.doc.name,
+                                    shipping_cost: values.shipping_cost,
+                                    purchase_invoice: values.purchase_invoice
+                                },
+                                callback: function (response) {
+                                    if (response.message) {
+                                        frappe.show_alert({
+                                            message: __('Shipping Cost updated successfully'),
+                                            indicator: 'green'
+                                        });
+                                        frm.reload_doc();
                                     }
-                                });
+                                }
+                            });
+                        };
+                        
+                        // Check for linked submitted Sales Invoices
+                        frappe.db.get_list('Sales Invoice Item', {
+                            filters: {
+                                delivery_note: frm.doc.name,
+                                docstatus: 1
+                            },
+                            fields: ['parent'],
+                            distinct: true,
+                            limit: 100
+                        }).then(function(items) {
+                            if (items && items.length > 0) {
+                                let siNames = [...new Set(items.map(i => i.parent))].join(', ');
+                                frappe.confirm(
+                                    __('This Delivery Note already has the following Sales Invoice(s):<br><br>• {0}<br><br>If you add shipping cost now:<br><br>✅ <b>The Profit Report will still be correct</b> — it reads shipping directly from the Delivery Note<br><br>❌ <b>The Sales Invoice(s) above will NOT be updated</b> — their cost and profit figures will be missing the shipping cost<br><br><b>Recommended:</b> Cancel the invoice(s) first → add shipping cost → re-create the invoice(s).<br><br>Do you want to proceed anyway?', [siNames]),
+                                    function() {
+                                        doAddShipping();
+                                    }
+                                );
+                            } else {
+                                frappe.confirm(
+                                    __('Are you sure you want to update shipping cost?'),
+                                    function() {
+                                        doAddShipping();
+                                    }
+                                );
                             }
-                        );
+                        });
                     }
                 });
                 
