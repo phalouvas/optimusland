@@ -23,12 +23,18 @@ def create_production_plan(purchase_receipt, method=None):
         }
     )
 
+    skipped_items = []
     for purchase_receipt_item in purchase_receipt.items:
         has_batch_no = frappe.db.get_value("Item", purchase_receipt_item.item_code, "has_batch_no")
         if has_batch_no:
             try:
                 item_details = get_item_details(purchase_receipt_item.item_code)
-            except Exception:
+            except Exception as e:
+                purchase_receipt.add_comment(
+                    "Comment",
+                    f"Failed to create Production Plan for item {purchase_receipt_item.item_code}: {str(e)}"
+                )
+                skipped_items.append(purchase_receipt_item.item_code)
                 continue
             purchase_receipt_item.bom_no = item_details.bom_no
             pln.append(
@@ -44,10 +50,25 @@ def create_production_plan(purchase_receipt, method=None):
             )
 
     if not pln.po_items:
+        if skipped_items:
+            purchase_receipt.add_comment(
+                "Comment",
+                f"Failed to create Production Plan: all {len(skipped_items)} item(s) lack BOMs. Skipped items: {', '.join(skipped_items)}"
+            )
         return
 
     pln.insert()
     pln.submit()
+
+    # Link the Production Plan back to the Purchase Receipt for traceability
+    purchase_receipt.db_set("custom_production_plan", pln.name)
+
+    # If some items were skipped, add a summary comment
+    if skipped_items:
+        purchase_receipt.add_comment(
+            "Comment",
+            f"Production Plan {pln.name} created with {len(pln.po_items)} item(s). Skipped {len(skipped_items)} item(s) without BOM: {', '.join(skipped_items)}"
+        )
 
     pln.make_work_order()
     work_orders = frappe.get_all(
