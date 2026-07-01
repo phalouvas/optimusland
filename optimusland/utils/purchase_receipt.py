@@ -223,6 +223,9 @@ def set_batch_no(purchase_receipt, method=None):
             batch_no = batches[0].name
             # Assign the batch number to the item
             item.batch_no = batch_no
+            # Link the Weight Slip to the Batch for traceability
+            if purchase_receipt.get("custom_weight_slip"):
+                frappe.db.set_value("Batch", batch_no, "custom_weight_slip", purchase_receipt.custom_weight_slip)
         else:
             # Create a new batch if none exists
             new_batch = frappe.new_doc("Batch")
@@ -234,6 +237,7 @@ def set_batch_no(purchase_receipt, method=None):
             new_batch.manufacturing_date = purchase_receipt.posting_date
             new_batch.custom_supplier_optimus = purchase_receipt.supplier
             new_batch.custom_prefix = item.custom_batch_prefix
+            new_batch.custom_weight_slip = purchase_receipt.get("custom_weight_slip")
             new_batch.insert()
 
             # Assign the new batch to the item

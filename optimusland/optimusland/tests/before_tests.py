@@ -67,6 +67,22 @@ def before_tests():
 		}).insert(ignore_permissions=True)
 		frappe.db.commit()
 
+	# Ensure custom_weight_slip field exists on Batch
+	if not frappe.db.exists("Custom Field",
+		{"dt": "Batch", "fieldname": "custom_weight_slip"}):
+		frappe.get_doc({
+			"doctype": "Custom Field",
+			"dt": "Batch",
+			"fieldname": "custom_weight_slip",
+			"fieldtype": "Link",
+			"label": "Weight Slip",
+			"options": "Weight Slip",
+			"read_only": 1,
+			"insert_after": "custom_supplier_optimus",
+			"module": "Optimusland",
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
 	company = get_or_create_test_company()
 	warehouse = get_or_create_test_warehouse(company.name)
 	get_or_create_test_supplier(company.name)
