@@ -107,6 +107,22 @@ class TestCreateProductionPlan(IntegrationTestCase):
 		self.assertGreater(len(finished_items), 0)
 		self.assertEqual(finished_items[0].batch_no, batch.name)
 
+		# Assert custom_production_plan is linked on the PR
+		pr.reload()
+		self.assertEqual(pr.custom_production_plan, plan.name)
+
+		# Assert no failure comments were added (all items succeeded)
+		comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+				"content": ("like", "%Failed to create Production Plan%"),
+			},
+			limit=1)
+		self.assertEqual(len(comments), 0,
+			"Expected no failure comments for successful PP creation")
+
 	def test_create_production_plan_multiple_items(self):
 		"""PR with 2 potato items → 2 WOs, 4 SEs."""
 		# Create a second potato-like item (clear default_bom from copy)
@@ -151,6 +167,22 @@ class TestCreateProductionPlan(IntegrationTestCase):
 							 filters={"production_plan": plan.name, "docstatus": 1})
 		self.assertEqual(len(wos), 2)
 
+		# Assert custom_production_plan is linked on the PR
+		pr.reload()
+		self.assertEqual(pr.custom_production_plan, plan.name)
+
+		# Assert no failure comments were added
+		comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+				"content": ("like", "%Failed to create Production Plan%"),
+			},
+			limit=1)
+		self.assertEqual(len(comments), 0,
+			"Expected no failure comments for successful PP creation")
+
 	def test_create_production_plan_no_bom_item(self):
 		"""Item without BOM is silently skipped — no crash."""
 		# Create item with no BOM (clear default_bom from copy)
@@ -178,7 +210,7 @@ class TestCreateProductionPlan(IntegrationTestCase):
 			warehouse=self.warehouse.name,
 		)
 
-		# Should not raise, silently skip item without BOM
+		# Should not raise (no BOM → skip with comment, no crash)
 		create_production_plan(pr)
 
 		# No PP should be created (only item had no BOM)
@@ -186,6 +218,34 @@ class TestCreateProductionPlan(IntegrationTestCase):
 									 filters={"docstatus": 1},
 									 order_by="creation DESC",
 									 limit=1)
+
+		# Assert custom_production_plan is NOT set
+		pr.reload()
+		self.assertIsNone(pr.custom_production_plan)
+
+		# Assert a per-item failure comment was added
+		comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+			},
+			fields=["content"],
+			order_by="creation ASC")
+		self.assertGreaterEqual(len(comments), 2,
+			"Expected at least 2 comments: per-item failure + summary")
+
+		# First comment: per-item failure mentioning the item code
+		self.assertIn("Failed to create", comments[0].content,
+			"Expected per-item failure comment")
+		self.assertIn(no_bom_code, comments[0].content,
+			"Expected comment to mention the failed item code")
+
+		# Second comment (or last): summary noting all items lacked BOMs
+		self.assertIn("all 1 item(s) lack BOMs", comments[-1].content,
+			"Expected summary comment about all items lacking BOMs")
+		self.assertIn(no_bom_code, comments[-1].content,
+			"Expected summary to mention skipped item code")
 
 	def test_create_production_plan_no_batch_items(self):
 		"""Non-batch items should not trigger PP creation."""
@@ -208,6 +268,77 @@ class TestCreateProductionPlan(IntegrationTestCase):
 			# Nothing to assert beyond no crash
 		except Exception as e:
 			self.fail(f"create_production_plan raised unexpectedly: {e}")
+
+	def test_create_production_plan_mixed_bom(self):
+		"""PR with 1 item with BOM + 1 item without BOM → PP created with partial items."""
+		# Create a no-BOM item
+		no_bom_code = "_Test No BOM Potato Mixed"
+		if frappe.db.exists("Item", no_bom_code):
+			frappe.delete_doc("Item", no_bom_code)
+		item_no_bom = frappe.copy_doc(self.potato_item)
+		item_no_bom.item_code = no_bom_code
+		item_no_bom.item_name = no_bom_code
+		item_no_bom.default_bom = None
+		item_no_bom.insert(ignore_permissions=True)
+
+		batch_no_bom = create_test_batch(item_no_bom.item_code, self.supplier.name,
+										 prefix="MIXED")
+		batch_has_bom = create_test_batch(self.potato_item.item_code, self.supplier.name,
+										  prefix="MIXED")
+
+		pr = create_test_purchase_receipt(
+			items_data=[
+				{"item_code": self.potato_item.item_code, "qty": 100, "rate": 0.50,
+				 "batch_no": batch_has_bom.name},
+				{"item_code": item_no_bom.item_code, "qty": 50, "rate": 0.50,
+				 "batch_no": batch_no_bom.name},
+			],
+			supplier=self.supplier.name,
+			company=self.company.name,
+			warehouse=self.warehouse.name,
+		)
+
+		create_production_plan(pr)
+
+		# Assert PP was created with only 1 item (the one with BOM)
+		plans = frappe.get_all("Production Plan",
+							   filters={"docstatus": 1},
+							   order_by="creation DESC",
+							   limit=1)
+		self.assertGreater(len(plans), 0)
+		plan = frappe.get_doc("Production Plan", plans[0].name)
+		self.assertEqual(len(plan.po_items), 1)
+		self.assertEqual(plan.po_items[0].item_code, self.potato_item.item_code)
+
+		# Assert custom_production_plan is linked on the PR
+		pr.reload()
+		self.assertEqual(pr.custom_production_plan, plan.name)
+
+		# Assert a per-item failure comment exists for the no-BOM item
+		failure_comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+				"content": ("like", f"%{no_bom_code}%"),
+			},
+			fields=["content"],
+			order_by="creation ASC")
+		self.assertGreaterEqual(len(failure_comments), 1,
+			"Expected at least 1 comment mentioning the skipped item")
+		self.assertIn("Failed to create", failure_comments[0].content)
+
+		# Assert a summary comment exists noting the partial success
+		summary_comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+				"content": ("like", "%Skipped 1 item(s)%"),
+			},
+			limit=1)
+		self.assertEqual(len(summary_comments), 1,
+			"Expected a summary comment about skipped items")
 
 	def test_fix_stock_entry_source_item(self):
 		"""fix_stock_entry appends source item and reverses items, sets purchase_rate."""
