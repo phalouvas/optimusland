@@ -22,6 +22,7 @@ from optimusland.optimusland.tests import (
 	setup_item_valuation,
 	create_test_batch,
 	create_test_purchase_receipt,
+	create_test_weight_slip,
 )
 from optimusland.utils.purchase_receipt import (
 	create_production_plan,
@@ -517,3 +518,73 @@ class TestSetBatchNo(IntegrationTestCase):
 
 		# No batch_no set for non-Potato items
 		self.assertIsNone(pr.items[0].batch_no)
+
+	def test_set_batch_no_sets_weight_slip_on_new_batch(self):
+		"""New batch created from PR-Weight Slip → custom_weight_slip linked."""
+		ws = create_test_weight_slip(self.supplier.name, items_data=[
+			{"variety": "Spunta", "size": "50-70", "kilogram": "5000", "quantity": "100"},
+		])
+
+		pr = frappe.get_doc({
+			"doctype": "Purchase Receipt",
+			"supplier": self.supplier.name,
+			"company": self.company.name,
+			"posting_date": frappe.utils.today(),
+			"set_posting_time": 1,
+			"custom_weight_slip": ws.name,
+			"items": [{
+				"item_code": self.potato_item.item_code,
+				"qty": 100,
+				"rate": 0.50,
+				"warehouse": self.warehouse.name,
+				"uom": self.potato_item.stock_uom,
+				"stock_uom": self.potato_item.stock_uom,
+				"conversion_factor": 1.0,
+				"custom_batch_prefix": "WS-TEST",
+			}],
+		})
+		pr.insert(ignore_permissions=True)
+
+		set_batch_no(pr)
+
+		self.assertIsNotNone(pr.items[0].batch_no)
+		batch = frappe.get_doc("Batch", pr.items[0].batch_no)
+		self.assertEqual(batch.custom_weight_slip, ws.name)
+
+	def test_set_batch_no_sets_weight_slip_on_existing_batch(self):
+		"""Existing batch reused via PR-Weight Slip → custom_weight_slip updated."""
+		ws = create_test_weight_slip(self.supplier.name, items_data=[
+			{"variety": "Spunta", "size": "50-70", "kilogram": "5000", "quantity": "100"},
+		])
+
+		# Create a batch first (simulates existing batch without WS link)
+		existing_batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
+										   prefix="WS-REUSE")
+
+		pr = frappe.get_doc({
+			"doctype": "Purchase Receipt",
+			"supplier": self.supplier.name,
+			"company": self.company.name,
+			"posting_date": frappe.utils.today(),
+			"set_posting_time": 1,
+			"custom_weight_slip": ws.name,
+			"items": [{
+				"item_code": self.potato_item.item_code,
+				"qty": 100,
+				"rate": 0.50,
+				"warehouse": self.warehouse.name,
+				"uom": self.potato_item.stock_uom,
+				"stock_uom": self.potato_item.stock_uom,
+				"conversion_factor": 1.0,
+				"custom_batch_prefix": "WS-REUSE",
+			}],
+		})
+		pr.insert(ignore_permissions=True)
+
+		set_batch_no(pr)
+
+		# Assert existing batch reused
+		self.assertEqual(pr.items[0].batch_no, existing_batch.name)
+		# Assert weight slip link was set on the existing batch
+		batch = frappe.get_doc("Batch", existing_batch.name)
+		self.assertEqual(batch.custom_weight_slip, ws.name)

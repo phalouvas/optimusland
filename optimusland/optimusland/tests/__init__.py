@@ -297,6 +297,45 @@ def create_test_batch(item_code, supplier, prefix=None, manufacturing_date=None)
 
 
 # ---------------------------------------------------------------------------
+# Weight Slip
+# ---------------------------------------------------------------------------
+
+def create_test_weight_slip(supplier, items_data=None, posting_date=None):
+	"""Create a Weight Slip with the given items.
+
+	Args:
+		supplier: Supplier name
+		items_data: List of dicts with keys: variety, size[, kilogram, quantity, jumbo_number]
+		posting_date: Posting date (defaults to today)
+
+	Returns the created Weight Slip document.
+	"""
+	if not posting_date:
+		posting_date = frappe.utils.today()
+
+	ws = frappe.get_doc({
+		"doctype": "Weight Slip",
+		"supplier": supplier,
+		"posting_date": posting_date,
+		"slip_number": f"TEST-{frappe.utils.now()}",
+		"naming_series": "WS-.YYYY.-",
+	})
+
+	if items_data:
+		for item_data in items_data:
+			ws.append("items", {
+				"variety": item_data.get("variety", ""),
+				"size": item_data.get("size", ""),
+				"kilogram": item_data.get("kilogram", "0"),
+				"quantity": item_data.get("quantity", "0"),
+				"jumbo_number": item_data.get("jumbo_number", ""),
+			})
+
+	ws.insert(ignore_permissions=True)
+	return ws
+
+
+# ---------------------------------------------------------------------------
 # Purchase Receipt
 # ---------------------------------------------------------------------------
 
