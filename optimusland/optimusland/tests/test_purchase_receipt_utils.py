@@ -342,7 +342,7 @@ class TestCreateProductionPlan(IntegrationTestCase):
 			"Expected a summary comment about skipped items")
 
 	def test_fix_stock_entry_source_item(self):
-		"""fix_stock_entry appends source item and reverses items, sets purchase_rate."""
+		"""fix_stock_entry injects source item with purchase_rate, groups consumed first."""
 		batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
 								  prefix="FIXSE")
 
@@ -370,16 +370,14 @@ class TestCreateProductionPlan(IntegrationTestCase):
 		purchase_rate = 0.55
 		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, purchase_rate)
 
-		# Assert a new source item was appended (count increased by 1)
+		# Assert a new source item was injected (count increased by 1)
 		self.assertEqual(len(se.items), item_count_before + 1)
 
-		# The appended source item has is_finished_item=0, matching item_code, and purchase_rate
-		# After reversal, added items are at the front of the list
 		# Find items with the same item_code as the production item
 		production_item_entries = [i for i in se.items if i.item_code == self.potato_item.item_code]
-		self.assertEqual(len(production_item_entries), 2)  # original finished + appended source
+		self.assertEqual(len(production_item_entries), 2)  # original finished + injected source
 
-		# One should have is_finished_item=0 (the appended source item)
+		# One should have is_finished_item=0 (the injected source item)
 		source_entries = [i for i in production_item_entries if i.is_finished_item == 0]
 		self.assertEqual(len(source_entries), 1)
 		self.assertEqual(source_entries[0].basic_rate, purchase_rate)
@@ -388,8 +386,139 @@ class TestCreateProductionPlan(IntegrationTestCase):
 		finished_entries = [i for i in production_item_entries if i.is_finished_item == 1]
 		self.assertEqual(len(finished_entries), 1)
 
-		# Assert items are reversed (first should be source, last should be finished)
-		self.assertEqual(se.items[0].is_finished_item, 0)
+		# Assert all consumed items (is_finished_item=0) precede all finished items (is_finished_item=1)
+		self._assert_consumed_before_finished(se.items)
+
+	def _assert_consumed_before_finished(self, items):
+		"""Helper: verify all consumed (is_finished_item=0) appear before all finished (is_finished_item=1)."""
+		found_finished = False
+		for item in items:
+			if item.is_finished_item == 1:
+				found_finished = True
+			elif found_finished:
+				self.fail(
+					f"Consumed item '{item.item_code}' (is_finished_item=0) appears "
+					f"after a finished item — items are out of order."
+				)
+
+	def test_fix_stock_entry_sets_batch_no(self):
+		"""fix_stock_entry assigns batch_no to the finished item."""
+		batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
+								  prefix="BATCHNO")
+
+		bom = self.bom
+		wo = frappe.get_doc({
+			"doctype": "Work Order",
+			"production_item": self.potato_item.item_code,
+			"bom_no": bom.name,
+			"qty": 10,
+			"company": self.company.name,
+			"fg_warehouse": self.warehouse.name,
+			"wip_warehouse": self.warehouse.name,
+			"use_multi_level_bom": 0,
+		})
+		wo.insert(ignore_permissions=True)
+		wo.submit()
+
+		se = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
+		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, 0.55)
+
+		# Every item matching the production item must have batch_no set
+		for item in se.items:
+			if item.item_code == self.potato_item.item_code:
+				self.assertEqual(
+					item.batch_no, batch.name,
+					f"Item '{item.idx}' ({'finished' if item.is_finished_item else 'source'}) "
+					f"missing batch_no"
+				)
+				self.assertEqual(
+					item.use_serial_batch_fields, 1,
+					f"Item '{item.idx}' missing use_serial_batch_fields"
+				)
+
+	def test_fix_stock_entry_structural_validity(self):
+		"""fix_stock_entry produces a structurally valid Manufacture SE."""
+		batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
+								  prefix="STRUCT")
+
+		bom = self.bom
+		wo = frappe.get_doc({
+			"doctype": "Work Order",
+			"production_item": self.potato_item.item_code,
+			"bom_no": bom.name,
+			"qty": 10,
+			"company": self.company.name,
+			"fg_warehouse": self.warehouse.name,
+			"wip_warehouse": self.warehouse.name,
+			"use_multi_level_bom": 0,
+		})
+		wo.insert(ignore_permissions=True)
+		wo.submit()
+
+		purchase_rate = 0.55
+		se = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
+		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, purchase_rate)
+
+		# 1. At least one finished item exists
+		finished_items = [i for i in se.items if i.is_finished_item == 1]
+		self.assertGreater(len(finished_items), 0)
+
+		# 2. The injected source item has the correct purchase_rate
+		source_items = [
+			i for i in se.items
+			if i.item_code == self.potato_item.item_code and i.is_finished_item == 0
+		]
+		self.assertEqual(len(source_items), 1)
+		self.assertEqual(source_items[0].basic_rate, purchase_rate)
+
+		# 3. Consumed items precede finished items
+		self._assert_consumed_before_finished(se.items)
+
+		# 4. Total item count reflects the injected source
+		item_count = len(se.items)
+		initial = len(frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty)).items)
+		self.assertEqual(item_count, initial + 1)
+
+	def test_fix_stock_entry_idempotent(self):
+		"""fix_stock_entry called twice does not duplicate the source item."""
+		batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
+								  prefix="IDEMP")
+
+		bom = self.bom
+		wo = frappe.get_doc({
+			"doctype": "Work Order",
+			"production_item": self.potato_item.item_code,
+			"bom_no": bom.name,
+			"qty": 10,
+			"company": self.company.name,
+			"fg_warehouse": self.warehouse.name,
+			"wip_warehouse": self.warehouse.name,
+			"use_multi_level_bom": 0,
+		})
+		wo.insert(ignore_permissions=True)
+		wo.submit()
+
+		se = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
+		purchase_rate = 0.55
+
+		# First call — injects the source item
+		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, purchase_rate)
+		item_count_first = len(se.items)
+
+		# Second call — should NOT inject a second source item
+		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, purchase_rate)
+		item_count_second = len(se.items)
+		self.assertEqual(
+			item_count_first, item_count_second,
+			"Second fix_stock_entry call added a duplicate source item"
+		)
+
+		# Verify there is still exactly one source item for the production item
+		source_count = len([
+			i for i in se.items
+			if i.item_code == self.potato_item.item_code and i.is_finished_item == 0
+		])
+		self.assertEqual(source_count, 1)
 
 
 class TestSetBatchNo(IntegrationTestCase):
