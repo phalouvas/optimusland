@@ -148,6 +148,10 @@ doc_events = {
     "Delivery Note": {
         "before_submit": "optimusland.utils.delivery_note.validate_batch_manufacture"
     },
+    "Journal Entry": {
+        "on_submit": "optimusland.utils.invoices_status.on_journal_entry_submit",
+        "on_cancel": "optimusland.utils.invoices_status.on_journal_entry_cancel",
+    },
 #    "Purchase Invoice": {
 #        "validate": "optimusland.utils.purchase_invoice.get_purchase_receipt_items"
 #    },
