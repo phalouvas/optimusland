@@ -15,8 +15,20 @@ The company operates **Optimus Land** as an intermediary potato packager: it pur
 The complete operational flow:
 
 ```
-Purchase Receipt → [on_submit] → Production Plan → Work Orders → Stock Entries (Material Transfer + Manufacture) → Delivery Note → Sales Invoice
+Weight Slip → Batch → Purchase Receipt → [on_submit] → Production Plan → Work Orders → Stock Entries (Material Transfer + Manufacture) → Delivery Note → Sales Invoice → Purchase Invoice
 ```
+
+A **Manufacturing Pipeline** workspace provides full-cycle visibility across all 8 stages (split into three tiers: Sourcing, Manufacturing, Fulfillment). Access it via the Optimus sidebar under **Settings → Manufacturing Pipeline** — restricted to System Manager role by default.
+
+1. **Weight Slip**: Farmer weigh-in at the gate. Standalone record with free-text fields.
+2. **Batch**: Created automatically by `set_batch_no()` during PR validate. Linked to Weight Slip via `custom_weight_slip` (auto-populated from PR).
+3. **Purchase Receipt**: Potatoes received from farmers. `on_submit` triggers `create_production_plan` (`optimusland/utils/purchase_receipt.py`). Linked to its Production Plan via `custom_production_plan` (auto-populated).
+4. **Production Plan**: Auto-created with items from the PR; each item's BOM fetched dynamically via `get_item_details()`.
+5. **Work Orders**: Created from the Production Plan and submitted automatically.
+6. **Stock Entries**: Two per Work Order — Material Transfer for Manufacture (raw materials consumed) then Manufacture (finished goods produced, with batch assignment and purchase rate).
+7. **Delivery Note**: Packaged goods shipped to customers. Shipping cost can be added post-submit. SI→DN linking enforced natively via Selling Settings `dn_required=Yes`.
+8. **Sales Invoice**: Billed to customer. No custom hooks — `dn_required=Yes` blocks save if items lack Delivery Note links.
+9. **Purchase Invoice**: Farmer payment. Journal Entry `on_submit`/`on_cancel` hooks handle status (pipeline monitor covers unpaid/unlinked PIs).
 
 1. **Purchase Receipt**: Potatoes received from farmers. `on_submit` triggers `create_production_plan` (`optimusland/utils/purchase_receipt.py`).
 2. **Production Plan**: Auto-created with items from the PR; each item's BOM fetched dynamically via `get_item_details()`.
@@ -88,6 +100,7 @@ Tests use Frappe's `IntegrationTestCase` (not the deprecated `FrappeTestCase`). 
 - **Run all tests**: `bench run-tests --app optimusland`
 - **Run a single module**: `bench run-tests --app optimusland --module optimusland.optimusland.tests.test_purchase_receipt_utils`
 - **Run by doctype**: `bench run-tests --app optimusland --doctype "Purchase Receipt"`
+- **Run pipeline tests**: `bench run-tests --app optimusland --module optimusland.optimusland.tests.test_pipeline`
 
 Test fixtures live in `optimusland/optimusland/tests/__init__.py` (factory functions). The `before_tests` hook seeds minimum data (Company, Item, BOM, Supplier, Customer) in the test DB only.
 
@@ -112,8 +125,10 @@ There is no custom app initialization beyond setting `__version__ = "16.0.1"` in
 
 ### DocType event hooks
 
-- **Purchase Receipt**: `on_submit` triggers `create_production_plan` (auto-creates Production Plan → Work Orders → Stock Entries). `validate` triggers `set_batch_no` which auto-assigns or creates Batch documents for "Potatoes" item group items.
-- **Sales Invoice**: `before_save` triggers `warn_unlinked_items` — uses `frappe.msgprint` (soft warning) to flag "Potatoes" items not linked to a Delivery Note. Does **not** block saving (the `ValidationError` raise is commented out — intentional soft enforcement).
+- **Purchase Receipt**: `on_submit` triggers `create_production_plan` (auto-creates Production Plan → Work Orders → Stock Entries). `validate` triggers `set_batch_no` which auto-assigns or creates Batch documents for "Potatoes" item group items. `create_production_plan` now sets `custom_production_plan` on PR for traceability and logs BOM failures as PR comments (not silent skips).
+- **Delivery Note**: `before_submit` triggers `validate_batch_manufacture` — blocks DN submission if batches haven't been manufactured.
+- **Journal Entry**: `on_submit` and `on_cancel` hooks in `invoices_status.py` — auto-mark invoices as Paid when GL balance ≈ 0, and revert on cancellation.
+- **Sales Invoice**: No custom hooks — SI→DN linking is enforced natively via Selling Settings `dn_required=Yes`.
 
 ### Python Utility Modules (`optimusland/utils/`)
 
@@ -123,14 +138,15 @@ Server-side Python functions decorated with `@frappe.whitelist()` — callable f
 |------|---------|
 | `purchase_receipt.py` | Production plan auto-creation (`on_submit`), batch auto-assignment (`validate`), Stock Entry account fixing |
 | `batch.py` | Bulk create Purchase Receipt from selected Batches |
-| `customer.py` | Match/reconcile Delivery Notes to Sales Invoices for a customer |
 | `supplier.py` | Detect unlinked Journal Entries on Supplier forms |
 | `delivery_note.py` | Add/remove shipping cost, link Purchase Invoice to Delivery Note |
-| `sales_invoice.py` | Warn unlinked Potato items (`before_save`), mark invoice as Paid (direct SQL) |
-| `purchase_invoice.py` | Mark invoice as Paid (direct SQL), auto-fill Purchase Receipt references |
-| `invoices_status.py` | Daily scheduled fix for unpaid/overdue invoice status (GL-based reconciliation) |
+| `sales_invoice.py` | Mark invoice as Paid (direct SQL — legacy, see `invoices_status.py` for current approach) |
+| `purchase_invoice.py` | Mark invoice as Paid (direct SQL — legacy), auto-fill Purchase Receipt references |
+| `invoices_status.py` | GL-based invoice status reconciliation (JE `on_submit`/`on_cancel` hooks + daily cron). Replaced `mark_paid` SQL functions. |
 | `payment_reminder.py` | Daily scheduled task — send Email/SMS payment reminders for overdue Sales Invoices (levels 1–4) |
-| `setup.py` | `after_migrate` — seeds 8 default payment reminder templates into Optimus General Settings |
+| `pipeline.py` | Manufacturing Pipeline Dashboard data queries, alert detection, retry/submit actions — called from the workspace Custom HTML Block |
+| `pipeline_monitor.py` | Daily pipeline health digest email — sends critical/warning alerts to configured recipients |
+| `setup.py` | `after_migrate` — seeds 8 default payment reminder templates into Optimus General Settings + creates the Pipeline Dashboard Custom HTML Block |
 
 ### Client-side JS (`optimusland/public/js/`)
 
@@ -141,7 +157,6 @@ Injected into standard ERPNext DocType forms via **`doctype_js`** in hooks (form
 | `purchase_receipt.js` | Purchase Receipt form | Sorts items by qty descending before save; filters `custom_weight_slip` by supplier |
 | `batch.js` | Batch form | Auto-generates `batch_id` on new Batch records |
 | `batch_list.js` | Batch list view | "Create Purchase Receipt" action from selected Batches (validates same supplier) |
-| `customer.js` | Customer form | "Update Delivery Notes Status" button — matches/reconciles DNs to SIs |
 | `supplier.js` | Supplier form | On load: checks for unlinked Journal Entries, shows warning alert |
 | `delivery_note.js` | Delivery Note form | "Add Shipping Cost" dialog + "Remove Shipping Cost" button (submitted DNs only) |
 | `sales_invoice.js` | Sales Invoice form | "Mark as Paid" button (submitted+overdue); Incoterm reminder on new invoices |
@@ -151,6 +166,23 @@ Injected into standard ERPNext DocType forms via **`doctype_js`** in hooks (form
 
 - **WeightSlip** + **WeightSlipItem**: Real DocTypes with DB tables.
 - **DeliveryNoteBillingWizard**: Virtual DocType — stores data as JSON in Long Text fields using `@property` getters/setters. No DB table.
+
+### Manufacturing Pipeline Dashboard
+
+A **separate workspace** (restricted to System Manager role) for full-cycle pipeline visibility:
+
+| Tier | Stages | Backend function |
+|------|--------|-----------------|
+| **Sourcing** | Weight Slip → Batch → PR | `pipeline.py:_get_sourcing_data()` |
+| **Manufacturing** | PR → PP → WO → SE | `pipeline.py:_get_manufacturing_data()` |
+| **Fulfillment** | DN → SI → PI | `pipeline.py:_get_fulfillment_data()` |
+
+The workspace shows:
+- **Shortcuts** with `stats_filter` for live alert counts (Failed PRs, Stuck WOs, Unbilled DNs)
+- **Custom HTML Block**: Interactive pipeline table with color-coded status, click-to-navigate entity links, Retry/Submit action buttons. All three tiers and alerts start collapsed by default.
+- **Alerts panel**: Cross-cutting issues — orphaned PRs, missing BOMs, stuck WOs, unbilled DNs, manufactured batches ready to ship, unlinked PIs, unlinked supplier JVs
+
+Access it from the Optimus sidebar under **Settings → Manufacturing Pipeline**. Configured via `optimusland/optimusland/workspace/manufacturing_pipeline/manufacturing_pipeline.json`. The Custom HTML Block is created automatically by `after_migrate` (`setup.py`) and served from `optimusland/public/html/pipeline_table.html`. Python backend at `utils/pipeline.py` with `@frappe.whitelist()` methods. Daily digest email via `utils/pipeline_monitor.py`.
 
 ### Custom Reports
 
@@ -163,10 +195,10 @@ JSON fixture files adding fields to standard DocTypes. Fields use the `custom_` 
 
 | DocType | Custom Fields Added |
 |---------|-------------------|
-| Batch | `custom_prefix` (Data), `custom_supplier_optimus` (Link → Supplier) |
+| Batch | `custom_prefix` (Data), `custom_supplier_optimus` (Link → Supplier), `custom_weight_slip` (Link → Weight Slip, read-only, auto-set from PR) |
 | Customer | `custom_national_id` (Data) |
 | Delivery Note | `custom_shipping_purchase_invoice` (Link → PI), `custom_shipping_cost` (Currency), `custom_shipping_rate` (Float, read-only), `custom_is_shipping_cost_added` (Check, read-only) |
-| Purchase Receipt | `custom_weight_slip` (Link → Weight Slip) |
+| Purchase Receipt | `custom_weight_slip` (Link → Weight Slip), `custom_production_plan` (Link → Production Plan, read-only, auto-set on PP creation) |
 | Purchase Receipt Item | `custom_batch_prefix` (Data, fetch from `batch_no.custom_prefix`) |
 | Sales Invoice | `custom_shipping_cost` (Currency, hidden in print), `shipping_details` (Markdown Editor) |
 | Sales Order Item | `supplier_code` (Link → Supplier), `supplier_name` (Data, fetch from `supplier_code`) |
@@ -182,3 +214,5 @@ Other fixture files exist (Delivery Note Item, Packed Item, Sales Invoice Item, 
 - `warn_unlinked_items` uses `frappe.msgprint` (soft warning) — does NOT block save (intentional)
 - Raw SQL is preferred in reports for accuracy over ORM queries
 - Git remote: `origin` = `phalouvas/optimusland` — push to origin, PR to main
+- Error logging uses `frappe.add_comment("Comment", ...)` on the affected document rather than silent exceptions (applied in `create_production_plan` for BOM-fetch failures)
+- SI→DN linking is enforced at ERPNext core level via Selling Settings `dn_required=Yes`, no custom validation needed

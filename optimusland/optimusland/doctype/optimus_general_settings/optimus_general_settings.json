@@ -11,6 +11,8 @@
   "payment_reminders_sms",
   "section_break_templates",
   "templates",
+  "section_break_pipeline",
+  "pipeline_alert_recipients",
   "section_break_variables_help",
   "html_help"
  ],
@@ -51,6 +53,17 @@
    "label": "Message Templates",
    "options": "Payment Reminder Template",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_pipeline",
+   "fieldtype": "Section Break",
+   "label": "Pipeline Alerts"
+  },
+  {
+   "fieldname": "pipeline_alert_recipients",
+   "fieldtype": "Small Text",
+   "label": "Pipeline Alert Recipients",
+   "description": "Comma-separated email addresses for the daily pipeline health digest."
   },
   {
    "fieldname": "section_break_variables_help",

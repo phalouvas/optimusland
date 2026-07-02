@@ -1,0 +1,20 @@
+<div class="pipeline-container">
+  <div class="filter-bar">
+    <label>From:</label>
+    <input type="date" id="filter-from" />
+    <label>To:</label>
+    <input type="date" id="filter-to" />
+    <label>Supplier:</label>
+    <input type="text" id="filter-supplier" placeholder="Any supplier" style="width:140px" />
+    <label>Customer:</label>
+    <input type="text" id="filter-customer" placeholder="Any customer" style="width:140px" />
+    <button class="btn-refresh" id="btn-refresh">Refresh</button>
+    <label class="auto-refresh-toggle">
+      <input type="checkbox" id="toggle-auto" /> Auto-refresh
+    </label>
+  </div>
+  <div id="pipeline-content">
+    <div class="pipeline-loading">Loading pipeline data...</div>
+  </div>
+  <div class="last-refreshed" id="last-refreshed"></div>
+</div>
