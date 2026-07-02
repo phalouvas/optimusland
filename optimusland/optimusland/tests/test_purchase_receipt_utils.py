@@ -22,6 +22,7 @@ from optimusland.optimusland.tests import (
 	setup_item_valuation,
 	create_test_batch,
 	create_test_purchase_receipt,
+	create_test_weight_slip,
 )
 from optimusland.utils.purchase_receipt import (
 	create_production_plan,
@@ -107,6 +108,22 @@ class TestCreateProductionPlan(IntegrationTestCase):
 		self.assertGreater(len(finished_items), 0)
 		self.assertEqual(finished_items[0].batch_no, batch.name)
 
+		# Assert custom_production_plan is linked on the PR
+		pr.reload()
+		self.assertEqual(pr.custom_production_plan, plan.name)
+
+		# Assert no failure comments were added (all items succeeded)
+		comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+				"content": ("like", "%Failed to create Production Plan%"),
+			},
+			limit=1)
+		self.assertEqual(len(comments), 0,
+			"Expected no failure comments for successful PP creation")
+
 	def test_create_production_plan_multiple_items(self):
 		"""PR with 2 potato items → 2 WOs, 4 SEs."""
 		# Create a second potato-like item (clear default_bom from copy)
@@ -151,6 +168,22 @@ class TestCreateProductionPlan(IntegrationTestCase):
 							 filters={"production_plan": plan.name, "docstatus": 1})
 		self.assertEqual(len(wos), 2)
 
+		# Assert custom_production_plan is linked on the PR
+		pr.reload()
+		self.assertEqual(pr.custom_production_plan, plan.name)
+
+		# Assert no failure comments were added
+		comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+				"content": ("like", "%Failed to create Production Plan%"),
+			},
+			limit=1)
+		self.assertEqual(len(comments), 0,
+			"Expected no failure comments for successful PP creation")
+
 	def test_create_production_plan_no_bom_item(self):
 		"""Item without BOM is silently skipped — no crash."""
 		# Create item with no BOM (clear default_bom from copy)
@@ -178,7 +211,7 @@ class TestCreateProductionPlan(IntegrationTestCase):
 			warehouse=self.warehouse.name,
 		)
 
-		# Should not raise, silently skip item without BOM
+		# Should not raise (no BOM → skip with comment, no crash)
 		create_production_plan(pr)
 
 		# No PP should be created (only item had no BOM)
@@ -186,6 +219,34 @@ class TestCreateProductionPlan(IntegrationTestCase):
 									 filters={"docstatus": 1},
 									 order_by="creation DESC",
 									 limit=1)
+
+		# Assert custom_production_plan is NOT set
+		pr.reload()
+		self.assertIsNone(pr.custom_production_plan)
+
+		# Assert a per-item failure comment was added
+		comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+			},
+			fields=["content"],
+			order_by="creation ASC")
+		self.assertGreaterEqual(len(comments), 2,
+			"Expected at least 2 comments: per-item failure + summary")
+
+		# First comment: per-item failure mentioning the item code
+		self.assertIn("Failed to create", comments[0].content,
+			"Expected per-item failure comment")
+		self.assertIn(no_bom_code, comments[0].content,
+			"Expected comment to mention the failed item code")
+
+		# Second comment (or last): summary noting all items lacked BOMs
+		self.assertIn("all 1 item(s) lack BOMs", comments[-1].content,
+			"Expected summary comment about all items lacking BOMs")
+		self.assertIn(no_bom_code, comments[-1].content,
+			"Expected summary to mention skipped item code")
 
 	def test_create_production_plan_no_batch_items(self):
 		"""Non-batch items should not trigger PP creation."""
@@ -209,8 +270,79 @@ class TestCreateProductionPlan(IntegrationTestCase):
 		except Exception as e:
 			self.fail(f"create_production_plan raised unexpectedly: {e}")
 
+	def test_create_production_plan_mixed_bom(self):
+		"""PR with 1 item with BOM + 1 item without BOM → PP created with partial items."""
+		# Create a no-BOM item
+		no_bom_code = "_Test No BOM Potato Mixed"
+		if frappe.db.exists("Item", no_bom_code):
+			frappe.delete_doc("Item", no_bom_code)
+		item_no_bom = frappe.copy_doc(self.potato_item)
+		item_no_bom.item_code = no_bom_code
+		item_no_bom.item_name = no_bom_code
+		item_no_bom.default_bom = None
+		item_no_bom.insert(ignore_permissions=True)
+
+		batch_no_bom = create_test_batch(item_no_bom.item_code, self.supplier.name,
+										 prefix="MIXED")
+		batch_has_bom = create_test_batch(self.potato_item.item_code, self.supplier.name,
+										  prefix="MIXED")
+
+		pr = create_test_purchase_receipt(
+			items_data=[
+				{"item_code": self.potato_item.item_code, "qty": 100, "rate": 0.50,
+				 "batch_no": batch_has_bom.name},
+				{"item_code": item_no_bom.item_code, "qty": 50, "rate": 0.50,
+				 "batch_no": batch_no_bom.name},
+			],
+			supplier=self.supplier.name,
+			company=self.company.name,
+			warehouse=self.warehouse.name,
+		)
+
+		create_production_plan(pr)
+
+		# Assert PP was created with only 1 item (the one with BOM)
+		plans = frappe.get_all("Production Plan",
+							   filters={"docstatus": 1},
+							   order_by="creation DESC",
+							   limit=1)
+		self.assertGreater(len(plans), 0)
+		plan = frappe.get_doc("Production Plan", plans[0].name)
+		self.assertEqual(len(plan.po_items), 1)
+		self.assertEqual(plan.po_items[0].item_code, self.potato_item.item_code)
+
+		# Assert custom_production_plan is linked on the PR
+		pr.reload()
+		self.assertEqual(pr.custom_production_plan, plan.name)
+
+		# Assert a per-item failure comment exists for the no-BOM item
+		failure_comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+				"content": ("like", f"%{no_bom_code}%"),
+			},
+			fields=["content"],
+			order_by="creation ASC")
+		self.assertGreaterEqual(len(failure_comments), 1,
+			"Expected at least 1 comment mentioning the skipped item")
+		self.assertIn("Failed to create", failure_comments[0].content)
+
+		# Assert a summary comment exists noting the partial success
+		summary_comments = frappe.get_all("Comment",
+			filters={
+				"reference_doctype": "Purchase Receipt",
+				"reference_name": pr.name,
+				"comment_type": "Comment",
+				"content": ("like", "%Skipped 1 item(s)%"),
+			},
+			limit=1)
+		self.assertEqual(len(summary_comments), 1,
+			"Expected a summary comment about skipped items")
+
 	def test_fix_stock_entry_source_item(self):
-		"""fix_stock_entry appends source item and reverses items, sets purchase_rate."""
+		"""fix_stock_entry injects source item with purchase_rate, groups consumed first."""
 		batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
 								  prefix="FIXSE")
 
@@ -238,16 +370,14 @@ class TestCreateProductionPlan(IntegrationTestCase):
 		purchase_rate = 0.55
 		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, purchase_rate)
 
-		# Assert a new source item was appended (count increased by 1)
+		# Assert a new source item was injected (count increased by 1)
 		self.assertEqual(len(se.items), item_count_before + 1)
 
-		# The appended source item has is_finished_item=0, matching item_code, and purchase_rate
-		# After reversal, added items are at the front of the list
 		# Find items with the same item_code as the production item
 		production_item_entries = [i for i in se.items if i.item_code == self.potato_item.item_code]
-		self.assertEqual(len(production_item_entries), 2)  # original finished + appended source
+		self.assertEqual(len(production_item_entries), 2)  # original finished + injected source
 
-		# One should have is_finished_item=0 (the appended source item)
+		# One should have is_finished_item=0 (the injected source item)
 		source_entries = [i for i in production_item_entries if i.is_finished_item == 0]
 		self.assertEqual(len(source_entries), 1)
 		self.assertEqual(source_entries[0].basic_rate, purchase_rate)
@@ -256,8 +386,139 @@ class TestCreateProductionPlan(IntegrationTestCase):
 		finished_entries = [i for i in production_item_entries if i.is_finished_item == 1]
 		self.assertEqual(len(finished_entries), 1)
 
-		# Assert items are reversed (first should be source, last should be finished)
-		self.assertEqual(se.items[0].is_finished_item, 0)
+		# Assert all consumed items (is_finished_item=0) precede all finished items (is_finished_item=1)
+		self._assert_consumed_before_finished(se.items)
+
+	def _assert_consumed_before_finished(self, items):
+		"""Helper: verify all consumed (is_finished_item=0) appear before all finished (is_finished_item=1)."""
+		found_finished = False
+		for item in items:
+			if item.is_finished_item == 1:
+				found_finished = True
+			elif found_finished:
+				self.fail(
+					f"Consumed item '{item.item_code}' (is_finished_item=0) appears "
+					f"after a finished item — items are out of order."
+				)
+
+	def test_fix_stock_entry_sets_batch_no(self):
+		"""fix_stock_entry assigns batch_no to the finished item."""
+		batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
+								  prefix="BATCHNO")
+
+		bom = self.bom
+		wo = frappe.get_doc({
+			"doctype": "Work Order",
+			"production_item": self.potato_item.item_code,
+			"bom_no": bom.name,
+			"qty": 10,
+			"company": self.company.name,
+			"fg_warehouse": self.warehouse.name,
+			"wip_warehouse": self.warehouse.name,
+			"use_multi_level_bom": 0,
+		})
+		wo.insert(ignore_permissions=True)
+		wo.submit()
+
+		se = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
+		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, 0.55)
+
+		# Every item matching the production item must have batch_no set
+		for item in se.items:
+			if item.item_code == self.potato_item.item_code:
+				self.assertEqual(
+					item.batch_no, batch.name,
+					f"Item '{item.idx}' ({'finished' if item.is_finished_item else 'source'}) "
+					f"missing batch_no"
+				)
+				self.assertEqual(
+					item.use_serial_batch_fields, 1,
+					f"Item '{item.idx}' missing use_serial_batch_fields"
+				)
+
+	def test_fix_stock_entry_structural_validity(self):
+		"""fix_stock_entry produces a structurally valid Manufacture SE."""
+		batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
+								  prefix="STRUCT")
+
+		bom = self.bom
+		wo = frappe.get_doc({
+			"doctype": "Work Order",
+			"production_item": self.potato_item.item_code,
+			"bom_no": bom.name,
+			"qty": 10,
+			"company": self.company.name,
+			"fg_warehouse": self.warehouse.name,
+			"wip_warehouse": self.warehouse.name,
+			"use_multi_level_bom": 0,
+		})
+		wo.insert(ignore_permissions=True)
+		wo.submit()
+
+		purchase_rate = 0.55
+		se = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
+		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, purchase_rate)
+
+		# 1. At least one finished item exists
+		finished_items = [i for i in se.items if i.is_finished_item == 1]
+		self.assertGreater(len(finished_items), 0)
+
+		# 2. The injected source item has the correct purchase_rate
+		source_items = [
+			i for i in se.items
+			if i.item_code == self.potato_item.item_code and i.is_finished_item == 0
+		]
+		self.assertEqual(len(source_items), 1)
+		self.assertEqual(source_items[0].basic_rate, purchase_rate)
+
+		# 3. Consumed items precede finished items
+		self._assert_consumed_before_finished(se.items)
+
+		# 4. Total item count reflects the injected source
+		item_count = len(se.items)
+		initial = len(frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty)).items)
+		self.assertEqual(item_count, initial + 1)
+
+	def test_fix_stock_entry_idempotent(self):
+		"""fix_stock_entry called twice does not duplicate the source item."""
+		batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
+								  prefix="IDEMP")
+
+		bom = self.bom
+		wo = frappe.get_doc({
+			"doctype": "Work Order",
+			"production_item": self.potato_item.item_code,
+			"bom_no": bom.name,
+			"qty": 10,
+			"company": self.company.name,
+			"fg_warehouse": self.warehouse.name,
+			"wip_warehouse": self.warehouse.name,
+			"use_multi_level_bom": 0,
+		})
+		wo.insert(ignore_permissions=True)
+		wo.submit()
+
+		se = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", wo.qty))
+		purchase_rate = 0.55
+
+		# First call — injects the source item
+		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, purchase_rate)
+		item_count_first = len(se.items)
+
+		# Second call — should NOT inject a second source item
+		se = fix_stock_entry(se, batch.name, self.potato_item.item_code, purchase_rate)
+		item_count_second = len(se.items)
+		self.assertEqual(
+			item_count_first, item_count_second,
+			"Second fix_stock_entry call added a duplicate source item"
+		)
+
+		# Verify there is still exactly one source item for the production item
+		source_count = len([
+			i for i in se.items
+			if i.item_code == self.potato_item.item_code and i.is_finished_item == 0
+		])
+		self.assertEqual(source_count, 1)
 
 
 class TestSetBatchNo(IntegrationTestCase):
@@ -386,3 +647,73 @@ class TestSetBatchNo(IntegrationTestCase):
 
 		# No batch_no set for non-Potato items
 		self.assertIsNone(pr.items[0].batch_no)
+
+	def test_set_batch_no_sets_weight_slip_on_new_batch(self):
+		"""New batch created from PR-Weight Slip → custom_weight_slip linked."""
+		ws = create_test_weight_slip(self.supplier.name, items_data=[
+			{"variety": "Spunta", "size": "50-70", "kilogram": "5000", "quantity": "100"},
+		])
+
+		pr = frappe.get_doc({
+			"doctype": "Purchase Receipt",
+			"supplier": self.supplier.name,
+			"company": self.company.name,
+			"posting_date": frappe.utils.today(),
+			"set_posting_time": 1,
+			"custom_weight_slip": ws.name,
+			"items": [{
+				"item_code": self.potato_item.item_code,
+				"qty": 100,
+				"rate": 0.50,
+				"warehouse": self.warehouse.name,
+				"uom": self.potato_item.stock_uom,
+				"stock_uom": self.potato_item.stock_uom,
+				"conversion_factor": 1.0,
+				"custom_batch_prefix": "WS-TEST",
+			}],
+		})
+		pr.insert(ignore_permissions=True)
+
+		set_batch_no(pr)
+
+		self.assertIsNotNone(pr.items[0].batch_no)
+		batch = frappe.get_doc("Batch", pr.items[0].batch_no)
+		self.assertEqual(batch.custom_weight_slip, ws.name)
+
+	def test_set_batch_no_sets_weight_slip_on_existing_batch(self):
+		"""Existing batch reused via PR-Weight Slip → custom_weight_slip updated."""
+		ws = create_test_weight_slip(self.supplier.name, items_data=[
+			{"variety": "Spunta", "size": "50-70", "kilogram": "5000", "quantity": "100"},
+		])
+
+		# Create a batch first (simulates existing batch without WS link)
+		existing_batch = create_test_batch(self.potato_item.item_code, self.supplier.name,
+										   prefix="WS-REUSE")
+
+		pr = frappe.get_doc({
+			"doctype": "Purchase Receipt",
+			"supplier": self.supplier.name,
+			"company": self.company.name,
+			"posting_date": frappe.utils.today(),
+			"set_posting_time": 1,
+			"custom_weight_slip": ws.name,
+			"items": [{
+				"item_code": self.potato_item.item_code,
+				"qty": 100,
+				"rate": 0.50,
+				"warehouse": self.warehouse.name,
+				"uom": self.potato_item.stock_uom,
+				"stock_uom": self.potato_item.stock_uom,
+				"conversion_factor": 1.0,
+				"custom_batch_prefix": "WS-REUSE",
+			}],
+		})
+		pr.insert(ignore_permissions=True)
+
+		set_batch_no(pr)
+
+		# Assert existing batch reused
+		self.assertEqual(pr.items[0].batch_no, existing_batch.name)
+		# Assert weight slip link was set on the existing batch
+		batch = frappe.get_doc("Batch", existing_batch.name)
+		self.assertEqual(batch.custom_weight_slip, ws.name)

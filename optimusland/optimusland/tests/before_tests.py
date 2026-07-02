@@ -51,6 +51,38 @@ def before_tests():
 	# Enable Serial and Batch Bundle support (ERPNext v16 requirement)
 	frappe.db.set_single_value("Stock Settings", "enable_serial_and_batch_no_for_item", 1)
 
+	# Ensure custom_production_plan field exists on Purchase Receipt
+	if not frappe.db.exists("Custom Field",
+		{"dt": "Purchase Receipt", "fieldname": "custom_production_plan"}):
+		frappe.get_doc({
+			"doctype": "Custom Field",
+			"dt": "Purchase Receipt",
+			"fieldname": "custom_production_plan",
+			"fieldtype": "Link",
+			"label": "Production Plan",
+			"options": "Production Plan",
+			"read_only": 1,
+			"insert_after": "custom_weight_slip",
+			"module": "Optimusland",
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	# Ensure custom_weight_slip field exists on Batch
+	if not frappe.db.exists("Custom Field",
+		{"dt": "Batch", "fieldname": "custom_weight_slip"}):
+		frappe.get_doc({
+			"doctype": "Custom Field",
+			"dt": "Batch",
+			"fieldname": "custom_weight_slip",
+			"fieldtype": "Link",
+			"label": "Weight Slip",
+			"options": "Weight Slip",
+			"read_only": 1,
+			"insert_after": "custom_supplier_optimus",
+			"module": "Optimusland",
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
 	company = get_or_create_test_company()
 	warehouse = get_or_create_test_warehouse(company.name)
 	get_or_create_test_supplier(company.name)

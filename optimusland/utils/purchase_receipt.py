@@ -23,12 +23,18 @@ def create_production_plan(purchase_receipt, method=None):
         }
     )
 
+    skipped_items = []
     for purchase_receipt_item in purchase_receipt.items:
         has_batch_no = frappe.db.get_value("Item", purchase_receipt_item.item_code, "has_batch_no")
         if has_batch_no:
             try:
                 item_details = get_item_details(purchase_receipt_item.item_code)
-            except Exception:
+            except Exception as e:
+                purchase_receipt.add_comment(
+                    "Comment",
+                    f"Failed to create Production Plan for item {purchase_receipt_item.item_code}: {str(e)}"
+                )
+                skipped_items.append(purchase_receipt_item.item_code)
                 continue
             purchase_receipt_item.bom_no = item_details.bom_no
             pln.append(
@@ -44,10 +50,25 @@ def create_production_plan(purchase_receipt, method=None):
             )
 
     if not pln.po_items:
+        if skipped_items:
+            purchase_receipt.add_comment(
+                "Comment",
+                f"Failed to create Production Plan: all {len(skipped_items)} item(s) lack BOMs. Skipped items: {', '.join(skipped_items)}"
+            )
         return
 
     pln.insert()
     pln.submit()
+
+    # Link the Production Plan back to the Purchase Receipt for traceability
+    purchase_receipt.db_set("custom_production_plan", pln.name)
+
+    # If some items were skipped, add a summary comment
+    if skipped_items:
+        purchase_receipt.add_comment(
+            "Comment",
+            f"Production Plan {pln.name} created with {len(pln.po_items)} item(s). Skipped {len(skipped_items)} item(s) without BOM: {', '.join(skipped_items)}"
+        )
 
     pln.make_work_order()
     work_orders = frappe.get_all(
@@ -121,6 +142,51 @@ def fix_missing_accounts(se):
 
 
 def fix_stock_entry(se, batch_no, item_code, purchase_rate):
+    """Inject the farmer's purchase_rate into a Manufacture Stock Entry.
+
+    Business context
+    ----------------
+    Raw potato is deliberately NOT in the Bill of Materials because the
+    farmer's purchase price is negotiated AFTER the sale to the customer
+    (BOM costs lock at Work Order creation time).  This means
+    ``make_stock_entry("Manufacture")`` produces items for BOM components
+    (bags, electricity, salary, etc.) but has NO consumption row for the
+    potato itself.
+
+    What this function does
+    -----------------------
+    1. Assigns ``batch_no`` and ``use_serial_batch_fields`` to every item
+       matching ``item_code`` in the Stock Entry.
+    2. Builds a source (consumed) item row with ``is_finished_item=0`` and
+       ``basic_rate=purchase_rate`` — this represents the raw potato being
+       consumed during manufacturing.
+    3. If no source item for the production item already exists, injects
+       one into the consumed-items group.
+    4. Re-orders items so consumed rows (``is_finished_item=0``) precede
+       finished rows (``is_finished_item=1``) — the standard Manufacture
+       Stock Entry structure.
+
+    Downstream consumer
+    -------------------
+    The Serial and Batch Entry records created from this Stock Entry
+    derive their ``incoming_rate`` from consumed items' ``basic_rate``.
+    The **Purchase Receipt Gross Profit** report reads ``sbe.incoming_rate``
+    to compute the ``supplier_rate`` formula:
+
+        supplier_rate = selling_rate + purchase_rate
+                       - incoming_rate
+                       - wished_profit_rate
+
+    If ``incoming_rate`` is understated (missing potato cost), the
+    ``supplier_rate`` is overstated and the farmer negotiation tool
+    suggests overpaying the farmer.
+
+    Returns
+    -------
+    frappe.model.document.Document
+        The same Stock Entry document with modified items, returned for
+        chaining convenience.
+    """
     expense_account = frappe.db.get_value(
         "Item Default", {"parent": item_code, "company": se.company}, "expense_account"
     )
@@ -135,30 +201,83 @@ def fix_stock_entry(se, batch_no, item_code, purchase_rate):
     if not cost_center:
         cost_center = frappe.get_cached_value("Company", se.company, "cost_center")
 
+    # ----------------------------------------------------------------
+    # Phase 1: assign batch_no and detect whether a source item exists
+    # ----------------------------------------------------------------
     source_item_exists = False
+    source_item_template = None
+
     for item in se.items:
         if item.item_code == item_code:
             item.batch_no = batch_no
             item.use_serial_batch_fields = 1
-            source_item = {
-                "item_code": item.item_code,
-                "s_warehouse": item.t_warehouse,
-                "bom_no": item.bom_no,
-                "qty": item.qty,
-                "batch_no": item.batch_no,
-                "use_serial_batch_fields": 1,
-                "is_finished_item": 0,
-                "basic_rate": purchase_rate,
-                "expense_account": expense_account,
-                "cost_center": cost_center,
-            }
+
+            # Capture the first matching item as a template for the
+            # source (consumed) row we may need to inject
+            if source_item_template is None:
+                source_item_template = {
+                    "item_code": item.item_code,
+                    "s_warehouse": item.t_warehouse,
+                    "bom_no": item.bom_no,
+                    "qty": item.qty,
+                    "batch_no": item.batch_no,
+                    "use_serial_batch_fields": 1,
+                    "is_finished_item": 0,
+                    "basic_rate": purchase_rate,
+                    "expense_account": expense_account,
+                    "cost_center": cost_center,
+                }
+
             if item.is_finished_item == 0:
                 source_item_exists = True
 
-    if not source_item_exists:
-        se.append("items", source_item)
+    # Edge case: no item matched the production item code — nothing to do
+    if source_item_template is None:
+        frappe.log_error(
+            message=(
+                f"fix_stock_entry: no item matching '{item_code}' found "
+                f"in Stock Entry {se.name}"
+            ),
+            title="fix_stock_entry — No matching item",
+        )
+        return se
 
-    se.items.reverse()
+    # ----------------------------------------------------------------
+    # Phase 2: inject source item if needed, then order by item type
+    # ----------------------------------------------------------------
+    if not source_item_exists:
+        se.append("items", source_item_template)
+
+    # Stable sort: consumed (0) before finished (1).
+    # This replaces the previous fragile `append + reverse` pattern and
+    # works regardless of the order `make_stock_entry()` returns items.
+    se.items.sort(key=lambda i: i.is_finished_item)
+
+    # ----------------------------------------------------------------
+    # Phase 3: validate post-modification structural integrity
+    # ----------------------------------------------------------------
+    if not any(i.is_finished_item == 1 for i in se.items):
+        frappe.throw(
+            _(
+                "fix_stock_entry: no finished item (is_finished_item=1) "
+                "after modification. The Manufacture Stock Entry "
+                "structure is invalid."
+            )
+        )
+
+    production_source_items = [
+        i
+        for i in se.items
+        if i.item_code == item_code and i.is_finished_item == 0
+    ]
+    if not production_source_items:
+        frappe.throw(
+            _(
+                "fix_stock_entry: no source item for '{0}' with "
+                "is_finished_item=0 after modification. The "
+                "purchase_rate injection failed."
+            ).format(item_code)
+        )
 
     return se
 
@@ -202,6 +321,9 @@ def set_batch_no(purchase_receipt, method=None):
             batch_no = batches[0].name
             # Assign the batch number to the item
             item.batch_no = batch_no
+            # Link the Weight Slip to the Batch for traceability
+            if purchase_receipt.get("custom_weight_slip"):
+                frappe.db.set_value("Batch", batch_no, "custom_weight_slip", purchase_receipt.custom_weight_slip)
         else:
             # Create a new batch if none exists
             new_batch = frappe.new_doc("Batch")
@@ -213,6 +335,7 @@ def set_batch_no(purchase_receipt, method=None):
             new_batch.manufacturing_date = purchase_receipt.posting_date
             new_batch.custom_supplier_optimus = purchase_receipt.supplier
             new_batch.custom_prefix = item.custom_batch_prefix
+            new_batch.custom_weight_slip = purchase_receipt.get("custom_weight_slip")
             new_batch.insert()
 
             # Assign the new batch to the item

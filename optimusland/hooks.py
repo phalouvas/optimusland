@@ -42,7 +42,6 @@ app_license = "mit"
 doctype_js = {
     "Purchase Invoice" : "public/js/purchase_invoice.js",
     "Supplier" : "public/js/supplier.js",
-    "Customer" : "public/js/customer.js",
     "Delivery Note" : "public/js/delivery_note.js",
     "Sales Invoice" : "public/js/sales_invoice.js",
     "Batch" : "public/js/batch.js",
@@ -146,11 +145,12 @@ doc_events = {
         "on_submit": "optimusland.utils.purchase_receipt.create_production_plan",
         "validate": "optimusland.utils.purchase_receipt.set_batch_no",
     },
-    "Sales Invoice": {
-        "before_save": "optimusland.utils.sales_invoice.warn_unlinked_items"
-    },
     "Delivery Note": {
         "before_submit": "optimusland.utils.delivery_note.validate_batch_manufacture"
+    },
+    "Journal Entry": {
+        "on_submit": "optimusland.utils.invoices_status.on_journal_entry_submit",
+        "on_cancel": "optimusland.utils.invoices_status.on_journal_entry_cancel",
     },
 #    "Purchase Invoice": {
 #        "validate": "optimusland.utils.purchase_invoice.get_purchase_receipt_items"
