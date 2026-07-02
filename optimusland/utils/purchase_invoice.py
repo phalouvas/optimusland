@@ -1,14 +1,5 @@
 import frappe
 
-@frappe.whitelist()
-def mark_paid(invoice_name: str):
-    frappe.db.sql("""
-        UPDATE `tabPurchase Invoice`
-        SET status = %s
-        WHERE name = %s
-    """, ("Paid", invoice_name))
-    return True
-
 def get_purchase_receipt_items(purchase_invoice, method):
     items_purchase_receipts = [
         item.purchase_receipt
