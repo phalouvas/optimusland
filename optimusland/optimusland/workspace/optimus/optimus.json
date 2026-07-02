@@ -1,9 +1,14 @@
 {
  "app": "optimusland",
  "charts": [],
- "content": "[{\"id\": \"vpoISZPXRj\", \"type\": \"spacer\", \"data\": {\"col\": 9}}, {\"id\": \"qQs1xJ10Nf\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"How To\", \"col\": 3}}, {\"id\": \"leswq5WQjT\", \"type\": \"header\", \"data\": {\"text\": \"<span style=\\\"font-size: 18px; letter-spacing: 0.18px;\\\"><b>Stock</b></span>\", \"col\": 12}}, {\"id\": \"aAkDplGgCA\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Weight Slip\", \"col\": 3}}, {\"id\": \"XpU6jxgv6V\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Batch\", \"col\": 3}}, {\"id\": \"eL1AQy3XtU\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Purchase Receipt\", \"col\": 3}}, {\"id\": \"fJpCeRShKK\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Delivery Note\", \"col\": 3}}, {\"id\": \"lBoc3PV4hL\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Accounting</b></span>\", \"col\": 12}}, {\"id\": \"2g4DAxH-3A\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Sales Invoice\", \"col\": 3}}, {\"id\": \"wLC4pxh47I\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Supplier Gross Profit\", \"col\": 3}}, {\"id\": \"K22Pn37xrA\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Purchase Invoice\", \"col\": 3}}, {\"id\": \"p8f2LWuXaP\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Bank</b></span>\", \"col\": 12}}, {\"id\": \"4ZA7sKbaA1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Entry Without Invoice\", \"col\": 6}}, {\"id\": \"obnYxjiMeI\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Reconciliation\", \"col\": 6}}, {\"id\": \"gjlxWrS-ts\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Bank Transaction\", \"col\": 6}}, {\"id\": \"tnpFMTjdoA\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Bank Reconciliation Tool\", \"col\": 6}}, {\"id\": \"CNeJWT16oG\", \"type\": \"card\", \"data\": {\"card_name\": \"People\", \"col\": 4}}, {\"id\": \"EGFyVzXgzk\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}, {\"id\": \"sTAngQ1nsL\", \"type\": \"card\", \"data\": {\"card_name\": \"Settings\", \"col\": 4}}]",
+ "content": "[{\"id\": \"vpoISZPXRj\", \"type\": \"spacer\", \"data\": {\"col\": 9}}, {\"id\": \"qQs1xJ10Nf\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"How To\", \"col\": 3}}, {\"id\": \"leswq5WQjT\", \"type\": \"header\", \"data\": {\"text\": \"<span style=\\\"font-size: 18px; letter-spacing: 0.18px;\\\"><b>Stock</b></span>\", \"col\": 12}}, {\"id\": \"aAkDplGgCA\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Weight Slip\", \"col\": 3}}, {\"id\": \"XpU6jxgv6V\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Batch\", \"col\": 3}}, {\"id\": \"eL1AQy3XtU\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Purchase Receipt\", \"col\": 3}}, {\"id\": \"fJpCeRShKK\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Delivery Note\", \"col\": 3}}, {\"id\": \"lBoc3PV4hL\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Accounting</b></span>\", \"col\": 12}}, {\"id\": \"2g4DAxH-3A\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Sales Invoice\", \"col\": 3}}, {\"id\": \"wLC4pxh47I\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Supplier Gross Profit\", \"col\": 3}}, {\"id\": \"K22Pn37xrA\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Purchase Invoice\", \"col\": 3}}, {\"id\": \"p8f2LWuXaP\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Bank</b></span>\", \"col\": 12}}, {\"id\": \"4ZA7sKbaA1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Entry Without Invoice\", \"col\": 6}}, {\"id\": \"obnYxjiMeI\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Reconciliation\", \"col\": 6}}, {\"id\": \"gjlxWrS-ts\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Bank Transaction\", \"col\": 6}}, {\"id\": \"tnpFMTjdoA\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Bank Reconciliation Tool\", \"col\": 6}}, {\"id\": \"pipeline-spacer-1\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"pipeline-header\", \"type\": \"header\", \"data\": {\"text\": \"<span style=\\\"font-size: 18px; letter-spacing: 0.18px;\\\"><b>Pipeline</b></span>\", \"col\": 12}}, {\"id\": \"pipeline-failed-prs\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Failed PRs\", \"col\": 4}}, {\"id\": \"pipeline-stuck-wos\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Stuck WOs\", \"col\": 4}}, {\"id\": \"pipeline-unbilled-dns\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Unbilled DNs\", \"col\": 4}}, {\"id\": \"pipeline-custom-block\", \"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Pipeline Dashboard\", \"col\": 12}}, {\"id\": \"CNeJWT16oG\", \"type\": \"card\", \"data\": {\"card_name\": \"People\", \"col\": 4}}, {\"id\": \"EGFyVzXgzk\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}, {\"id\": \"sTAngQ1nsL\", \"type\": \"card\", \"data\": {\"card_name\": \"Settings\", \"col\": 4}}]",
  "creation": "2024-08-10 15:20:59.948226",
- "custom_blocks": [],
+ "custom_blocks": [
+  {
+   "custom_block_name": "Pipeline Dashboard",
+   "label": "Pipeline Dashboard"
+  }
+ ],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
@@ -102,7 +107,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-06-04 00:00:00.000000",
+ "modified": "2026-07-02 13:48:23.142980",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Optimus",
@@ -213,6 +218,33 @@
    "label": "Purchase Receipt",
    "link_to": "Purchase Receipt",
    "stats_filter": "[[\"Purchase Receipt\",\"status\",\"=\",\"To Bill\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "format": "{} Failed",
+   "label": "Failed PRs",
+   "link_to": "Purchase Receipt",
+   "stats_filter": "[[\"Purchase Receipt\",\"custom_production_plan\",\"is\",\"not set\",false],[\"Purchase Receipt\",\"docstatus\",\"=\",1,false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "format": "{} Draft",
+   "label": "Stuck WOs",
+   "link_to": "Work Order",
+   "stats_filter": "[[\"Work Order\",\"status\",\"=\",\"Draft\",false],[\"Work Order\",\"docstatus\",\"=\",0,false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "format": "{} To Bill",
+   "label": "Unbilled DNs",
+   "link_to": "Delivery Note",
+   "stats_filter": "[[\"Delivery Note\",\"status\",\"=\",\"To Bill\",false],[\"Delivery Note\",\"docstatus\",\"=\",1,false]]",
    "type": "DocType"
   }
  ],

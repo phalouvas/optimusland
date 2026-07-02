@@ -1,6 +1,18 @@
 ## Optimusland
 
-Optimus Land customizations
+Optimus Land customizations for ERPNext v16 — potato supply chain management.
+
+### Features
+
+- **Automated manufacturing flow**: Purchase Receipt submit auto-creates Production Plan → Work Orders → Stock Entries (Material Transfer + Manufacture)
+- **Manufacturing Pipeline Dashboard**: Three-tier visibility (Sourcing → Manufacturing → Fulfillment) embedded in the Optimus workspace with live alert counts, click-to-navigate entity links, and retry/submit actions
+- **Daily pipeline health digest**: Automated email summary of critical and warning-level alerts
+- **Payment reminders**: Configurable 4-level escalation (Email + SMS) for overdue Sales Invoices
+- **Shipping cost management**: Add/remove shipping costs on submitted Delivery Notes
+- **Batch-to-PR bulk creation**: Create Purchase Receipts from selected Batches
+- **Supplier unlinked JV detection**: Warns when Journal Entries could affect supplier balance accuracy
+- **Invoice status reconciliation**: GL-based auto-fix for unpaid/overdue invoice statuses (JE hooks + daily cron)
+- **Batch traceability**: Full chain from Weight Slip → Batch → PR → PP → WO → SE → DN → SI via custom link fields
 
 ### Testing
 
