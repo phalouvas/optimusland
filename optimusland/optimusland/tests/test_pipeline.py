@@ -38,7 +38,7 @@ class TestPipeline(IntegrationTestCase):
     def test_get_pipeline_data_with_pr_returns_sourcing_data(self):
         """A submitted PR appears in the sourcing tier."""
         pr = _create_test_pr(self.supplier, self.potato_item)
-        pr.submit()
+        pr = _submit_pr_directly(pr)
 
         from optimusland.utils.pipeline import get_pipeline_data
 
@@ -52,7 +52,7 @@ class TestPipeline(IntegrationTestCase):
     def test_get_pipeline_data_respects_supplier_filter(self):
         """Supplier filter narrows the sourcing tier results."""
         pr = _create_test_pr(self.supplier, self.potato_item)
-        pr.submit()
+        pr = _submit_pr_directly(pr)
 
         from optimusland.utils.pipeline import get_pipeline_data
 
@@ -79,7 +79,7 @@ class TestPipeline(IntegrationTestCase):
     def test_alert_pr_no_pp(self):
         """PR without custom_production_plan triggers a critical alert."""
         pr = _create_test_pr(self.supplier, self.potato_item)
-        pr.submit()
+        pr = _submit_pr_directly(pr)
         # Explicitly clear the PP link to ensure alert detection
         frappe.db.set_value("Purchase Receipt", pr.name, "custom_production_plan", None)
         frappe.db.commit()
@@ -126,7 +126,7 @@ class TestPipeline(IntegrationTestCase):
     def test_get_kpi_counts_prs_today(self):
         """A PR submitted today increments prs_today."""
         pr = _create_test_pr(self.supplier, self.potato_item)
-        pr.submit()
+        pr = _submit_pr_directly(pr)
 
         from optimusland.utils.pipeline import get_kpi_counts
 
@@ -225,3 +225,16 @@ def _create_test_pr(supplier, item):
             item_row.db_insert()
 
     return pr
+
+
+def _submit_pr_directly(pr):
+    """Submit a PR via direct SQL to bypass hooks.
+
+    Avoids triggering ``create_production_plan`` which requires
+    valuation rates for BOM items not set up in test environment.
+    The PR must already be inserted (via ``_create_test_pr``).
+    """
+    frappe.db.set_value("Purchase Receipt", pr.name, "docstatus", 1)
+    frappe.db.set_value("Purchase Receipt", pr.name, "status", "To Bill")
+    frappe.db.commit()
+    return frappe.get_doc("Purchase Receipt", pr.name)
