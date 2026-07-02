@@ -211,6 +211,18 @@
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "icon": "organization",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Manufacturing Pipeline",
+   "link_to": "Manufacturing Pipeline",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
   }
  ],
  "modified": "2026-06-04 00:00:00.000000",

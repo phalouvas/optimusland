@@ -18,7 +18,7 @@ The complete operational flow:
 Weight Slip → Batch → Purchase Receipt → [on_submit] → Production Plan → Work Orders → Stock Entries (Material Transfer + Manufacture) → Delivery Note → Sales Invoice → Purchase Invoice
 ```
 
-A **Manufacturing Pipeline Dashboard** embedded in the Optimus workspace provides full-cycle visibility across all 8 stages (split into three tiers: Sourcing, Manufacturing, Fulfillment).
+A **Manufacturing Pipeline** workspace provides full-cycle visibility across all 8 stages (split into three tiers: Sourcing, Manufacturing, Fulfillment). Access it via the Optimus sidebar under **Settings → Manufacturing Pipeline** — restricted to System Manager role by default.
 
 1. **Weight Slip**: Farmer weigh-in at the gate. Standalone record with free-text fields.
 2. **Batch**: Created automatically by `set_batch_no()` during PR validate. Linked to Weight Slip via `custom_weight_slip` (auto-populated from PR).
@@ -169,7 +169,7 @@ Injected into standard ERPNext DocType forms via **`doctype_js`** in hooks (form
 
 ### Manufacturing Pipeline Dashboard
 
-A **three-tier pipeline view** embedded in the Optimus workspace via native Frappe widgets and a Custom HTML Block:
+A **separate workspace** (restricted to System Manager role) for full-cycle pipeline visibility:
 
 | Tier | Stages | Backend function |
 |------|--------|-----------------|
@@ -177,13 +177,12 @@ A **three-tier pipeline view** embedded in the Optimus workspace via native Frap
 | **Manufacturing** | PR → PP → WO → SE | `pipeline.py:_get_manufacturing_data()` |
 | **Fulfillment** | DN → SI → PI | `pipeline.py:_get_fulfillment_data()` |
 
-The dashboard shows:
-- **Number Cards**: KPI counts (PRs today, Open WOs, Ready to ship, Alerts)
+The workspace shows:
 - **Shortcuts** with `stats_filter` for live alert counts (Failed PRs, Stuck WOs, Unbilled DNs)
-- **Custom HTML Block**: Interactive pipeline table with color-coded status, click-to-navigate entity links, Retry/Submit action buttons
-- **Alerts panel**: Cross-cutting issues across all tiers — orphaned PRs, missing BOMs, stuck WOs, unbilled DNs, manufactured batches ready to ship, unlinked PIs, unlinked supplier JVs
+- **Custom HTML Block**: Interactive pipeline table with color-coded status, click-to-navigate entity links, Retry/Submit action buttons. All three tiers and alerts start collapsed by default.
+- **Alerts panel**: Cross-cutting issues — orphaned PRs, missing BOMs, stuck WOs, unbilled DNs, manufactured batches ready to ship, unlinked PIs, unlinked supplier JVs
 
-Configured via `optimusland/optimusland/workspace/optimus/optimus.json`. The Custom HTML Block is created automatically by `after_migrate` (`setup.py`) and served from `optimusland/public/html/pipeline_table.html`. Python backend at `utils/pipeline.py` with `@frappe.whitelist()` methods. Daily digest email via `utils/pipeline_monitor.py`.
+Access it from the Optimus sidebar under **Settings → Manufacturing Pipeline**. Configured via `optimusland/optimusland/workspace/manufacturing_pipeline/manufacturing_pipeline.json`. The Custom HTML Block is created automatically by `after_migrate` (`setup.py`) and served from `optimusland/public/html/pipeline_table.html`. Python backend at `utils/pipeline.py` with `@frappe.whitelist()` methods. Daily digest email via `utils/pipeline_monitor.py`.
 
 ### Custom Reports
 

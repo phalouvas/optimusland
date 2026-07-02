@@ -1,0 +1,67 @@
+{
+ "app": "optimusland",
+ "charts": [],
+ "content": "[{\"id\": \"mp-header\", \"type\": \"header\", \"data\": {\"text\": \"<span style=\\\"font-size: 18px; letter-spacing: 0.18px;\\\"><b>Manufacturing Pipeline</b></span>\", \"col\": 12}}, {\"id\": \"mp-failed\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Failed PRs\", \"col\": 4}}, {\"id\": \"mp-stuck\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Stuck WOs\", \"col\": 4}}, {\"id\": \"mp-unbilled\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Unbilled DNs\", \"col\": 4}}, {\"id\": \"mp-block\", \"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Pipeline Dashboard\", \"col\": 12}}]",
+ "custom_blocks": [
+  {
+   "custom_block_name": "Pipeline Dashboard",
+   "label": "Pipeline Dashboard"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "heart-active",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Manufacturing Pipeline",
+ "links": [],
+ "modified": "2026-07-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Optimusland",
+ "name": "Manufacturing Pipeline",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 3.0,
+ "shortcuts": [
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "format": "{} Failed",
+   "label": "Failed PRs",
+   "link_to": "Purchase Receipt",
+   "stats_filter": "[[\"Purchase Receipt\",\"custom_production_plan\",\"is\",\"not set\",false],[\"Purchase Receipt\",\"docstatus\",\"=\",1,false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "format": "{} Draft",
+   "label": "Stuck WOs",
+   "link_to": "Work Order",
+   "stats_filter": "[[\"Work Order\",\"status\",\"=\",\"Draft\",false],[\"Work Order\",\"docstatus\",\"=\",0,false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "format": "{} To Bill",
+   "label": "Unbilled DNs",
+   "link_to": "Delivery Note",
+   "stats_filter": "[[\"Delivery Note\",\"status\",\"=\",\"To Bill\",false],[\"Delivery Note\",\"docstatus\",\"=\",1,false]]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Manufacturing Pipeline",
+ "type": "Workspace"
+}

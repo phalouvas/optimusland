@@ -1,7 +1,6 @@
 # Copyright (c) 2026, KAINOTOMO PH LTD and contributors
 # For license information, please see license.txt
 
-import json
 import frappe
 from frappe import _
 from pathlib import Path
@@ -145,7 +144,7 @@ def _seed_default_reminder_templates():
 def _seed_pipeline_dashboard_block():
 	"""Create the Pipeline Dashboard Custom HTML Block if it doesn't exist.
 
-	The block is embedded in the Optimus workspace as a custom block,
+	The block is embedded in the Manufacturing Pipeline workspace,
 	rendering the three-tier pipeline table and alerts panel.
 	"""
 	block_name = "Pipeline Dashboard"
@@ -177,76 +176,3 @@ def _seed_pipeline_dashboard_block():
 		"private": 0,
 	})
 	block.insert(ignore_permissions=True)
-
-	# Add the block to the Optimus workspace if not already present
-	workspace_name = "Optimus"
-	if not frappe.db.exists("Workspace", workspace_name):
-		return
-
-	workspace = frappe.get_doc("Workspace", workspace_name)
-	already_added = any(cb.custom_block_name == block_name for cb in workspace.custom_blocks)
-	if not already_added:
-		workspace.append("custom_blocks", {
-			"custom_block_name": block_name,
-			"label": block_name,
-		})
-
-		# Also add Pipeline shortcuts if not already present
-		pipeline_shortcut_labels = {"Failed PRs", "Stuck WOs", "Unbilled DNs"}
-		existing_labels = {s.label for s in workspace.shortcuts}
-		missing = pipeline_shortcut_labels - existing_labels
-
-		if missing:
-			shortcut_defs = [
-				{
-					"label": "Failed PRs",
-					"type": "DocType",
-					"link_to": "Purchase Receipt",
-					"doc_view": "List",
-					"color": "Red",
-					"format": "{} Failed",
-					"stats_filter": json.dumps([
-						["Purchase Receipt", "custom_production_plan", "is", "not set", False],
-						["Purchase Receipt", "docstatus", "=", 1, False],
-					]),
-				},
-				{
-					"label": "Stuck WOs",
-					"type": "DocType",
-					"link_to": "Work Order",
-					"doc_view": "List",
-					"color": "Orange",
-					"format": "{} Draft",
-					"stats_filter": json.dumps([
-						["Work Order", "status", "=", "Draft", False],
-						["Work Order", "docstatus", "=", 0, False],
-					]),
-				},
-				{
-					"label": "Unbilled DNs",
-					"type": "DocType",
-					"link_to": "Delivery Note",
-					"doc_view": "List",
-					"color": "Yellow",
-					"format": "{} To Bill",
-					"stats_filter": json.dumps([
-						["Delivery Note", "status", "=", "To Bill", False],
-						["Delivery Note", "docstatus", "=", 1, False],
-					]),
-				},
-			]
-			for sd in shortcut_defs:
-				if sd["label"] not in existing_labels:
-					workspace.append("shortcuts", sd)
-
-		workspace.save(ignore_permissions=True)
-
-	# Export fixtures after seeding so the JSON file is updated
-	try:
-		frappe.enqueue(
-			"frappe.core.doctype.fixture.export_fixtures",
-			app="optimusland",
-			queue="short",
-		)
-	except Exception:
-		pass
