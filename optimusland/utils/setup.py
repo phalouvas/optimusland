@@ -182,7 +182,7 @@ def _seed_pipeline_dashboard_block():
 		return
 
 	workspace = frappe.get_doc("Workspace", workspace_name)
-	already_added = any(cb.block == block_name for cb in workspace.custom_blocks)
+	already_added = any(cb.custom_block_name == block_name for cb in workspace.custom_blocks)
 	if not already_added:
 		workspace.append("custom_blocks", {
 			"custom_block_name": block_name,
