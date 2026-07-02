@@ -48,7 +48,7 @@
     var bodyRows = data.map(function(row) {
       return '<tr>' + rowRenderer(row).map(function(c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
     }).join('');
-    return '<div class="tier-section"><div class="tier-header" onclick="this.classList.toggle(\'collapsed\'); this.nextElementSibling.classList.toggle(\'collapsed\')"><span class="tier-icon">' + icon + '</span><span class="tier-title">' + title + '</span><span class="tier-count">' + data.length + ' item' + (data.length !== 1 ? 's' : '') + '</span><span class="tier-chevron">&#9660;</span></div><div class="tier-body"><table class="pipeline-table"><thead><tr>' + headerRow + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div></div>';
+    return '<div class="tier-section"><div class="tier-header collapsed" onclick="this.classList.toggle(\'collapsed\'); this.nextElementSibling.classList.toggle(\'collapsed\')"><span class="tier-icon">' + icon + '</span><span class="tier-title">' + title + '</span><span class="tier-count">' + data.length + ' item' + (data.length !== 1 ? 's' : '') + '</span><span class="tier-chevron">&#9660;</span></div><div class="tier-body collapsed"><table class="pipeline-table"><thead><tr>' + headerRow + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div></div>';
   }
 
   function renderSourcing(data) {
@@ -95,7 +95,7 @@
       }
       return '<div class="alert-row"><span class="alert-icon">' + (iconMap[a.severity] || '&#128993;') + '</span><div class="alert-body"><div class="alert-title">' + a.title + '</div><div class="alert-message">' + a.message + '</div></div><div class="alert-actions">' + actionsHtml + '</div></div>';
     }).join('');
-    return '<div class="alerts-panel"><div class="alerts-header">Alerts - ' + alerts.length + ' issue' + (alerts.length !== 1 ? 's' : '') + ' found</div><div class="alerts-list">' + rows + '</div></div>';
+    return '<div class="alerts-panel"><div class="alerts-header collapsed" onclick="var p=this.parentElement; var l=p.querySelector(\'.alerts-list\'); this.classList.toggle(\'collapsed\'); if(l)l.classList.toggle(\'collapsed\');"><span class="alerts-title">Alerts - ' + alerts.length + ' issue' + (alerts.length !== 1 ? 's' : '') + ' found</span><span class="tier-chevron">&#9660;</span></div><div class="alerts-list collapsed">' + rows + '</div></div>';
   }
 
   function refresh() {

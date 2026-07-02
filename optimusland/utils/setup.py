@@ -155,6 +155,7 @@ def _seed_pipeline_dashboard_block():
 	base_path = Path(__file__).resolve().parent.parent / "public" / "html"
 	html_path = base_path / "pipeline_table.html"
 	js_path = base_path / "pipeline_table.js"
+	css_path = base_path / "pipeline_table.css"
 
 	if not html_path.exists():
 		frappe.log_error(
@@ -165,13 +166,14 @@ def _seed_pipeline_dashboard_block():
 
 	html_content = html_path.read_text(encoding="utf-8")
 	script_content = js_path.read_text(encoding="utf-8") if js_path.exists() else ""
+	style_content = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
 
 	block = frappe.get_doc({
 		"doctype": "Custom HTML Block",
 		"name": block_name,
 		"html": html_content,
 		"script": script_content,
-		"style": None,
+		"style": style_content,
 		"private": 0,
 	})
 	block.insert(ignore_permissions=True)
