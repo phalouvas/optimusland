@@ -26,13 +26,17 @@ frappe.ui.form.on('Delivery Note', {
                                 
                                 if (purchase_invoice) {
                                     // Fetch the grand_total from the selected Purchase Invoice
-                                    frappe.db.get_value('Purchase Invoice', purchase_invoice, 'grand_total')
-                                        .then(r => {
-                                            if (r.message && r.message.grand_total) {
-                                                // Update the shipping_cost field with the grand_total
-                                                d.set_value('shipping_cost', r.message.grand_total);
+                                    frappe.call({
+                                        method: "optimusland.utils.delivery_note.get_purchase_invoice_grand_total",
+                                        args: {
+                                            purchase_invoice: purchase_invoice
+                                        },
+                                        callback: function(r) {
+                                            if (r.message) {
+                                                d.set_value('shipping_cost', r.message);
                                             }
-                                        });
+                                        }
+                                    });
                                 }
                             }
                         }                        
@@ -65,30 +69,29 @@ frappe.ui.form.on('Delivery Note', {
                         };
                         
                         // Check for linked submitted Sales Invoices
-                        frappe.db.get_list('Sales Invoice Item', {
-                            filters: {
-                                delivery_note: frm.doc.name,
-                                docstatus: 1
+                        frappe.call({
+                            method: "optimusland.utils.delivery_note.check_linked_sales_invoices",
+                            args: {
+                                delivery_note_name: frm.doc.name
                             },
-                            fields: ['parent'],
-                            distinct: true,
-                            limit: 100
-                        }).then(function(items) {
-                            if (items && items.length > 0) {
-                                let siNames = [...new Set(items.map(i => i.parent))].join(', ');
-                                frappe.confirm(
-                                    __('This Delivery Note already has the following Sales Invoice(s):<br><br>• {0}<br><br>If you add shipping cost now:<br><br>✅ <b>The Profit Report will still be correct</b> — it reads shipping directly from the Delivery Note<br><br>❌ <b>The Sales Invoice(s) above will NOT be updated</b> — their cost and profit figures will be missing the shipping cost<br><br><b>Recommended:</b> Cancel the invoice(s) first → add shipping cost → re-create the invoice(s).<br><br>Do you want to proceed anyway?', [siNames]),
-                                    function() {
-                                        doAddShipping();
-                                    }
-                                );
-                            } else {
-                                frappe.confirm(
-                                    __('Are you sure you want to update shipping cost?'),
-                                    function() {
-                                        doAddShipping();
-                                    }
-                                );
+                            callback: function(r) {
+                                const linkedSIs = r.message || [];
+                                if (linkedSIs.length > 0) {
+                                    let siNames = linkedSIs.join(', ');
+                                    frappe.confirm(
+                                        __('This Delivery Note already has the following Sales Invoice(s):<br><br>• {0}<br><br>If you add shipping cost now:<br><br>✅ <b>The Profit Report will still be correct</b> — it reads shipping directly from the Delivery Note<br><br>❌ <b>The Sales Invoice(s) above will NOT be updated</b> — their cost and profit figures will be missing the shipping cost<br><br><b>Recommended:</b> Cancel the invoice(s) first → add shipping cost → re-create the invoice(s).<br><br>Do you want to proceed anyway?', [siNames]),
+                                        function() {
+                                            doAddShipping();
+                                        }
+                                    );
+                                } else {
+                                    frappe.confirm(
+                                        __('Are you sure you want to update shipping cost?'),
+                                        function() {
+                                            doAddShipping();
+                                        }
+                                    );
+                                }
                             }
                         });
                     }

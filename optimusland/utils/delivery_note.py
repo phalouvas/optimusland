@@ -80,6 +80,36 @@ def add_shipping_cost(delivery_note_name: str, shipping_cost: float, purchase_in
 
 
 @frappe.whitelist()
+def check_linked_sales_invoices(delivery_note_name: str):
+    """Check for linked submitted Sales Invoices for a Delivery Note.
+
+    Returns a list of Sales Invoice names (empty list if none).
+    Uses frappe.db.get_all to bypass permission system.
+    """
+    return frappe.db.get_all(
+        "Sales Invoice Item",
+        filters={
+            "delivery_note": delivery_note_name,
+            "docstatus": 1
+        },
+        fields=["parent"],
+        distinct=True,
+        pluck="parent"
+    )
+
+
+@frappe.whitelist()
+def get_purchase_invoice_grand_total(purchase_invoice: str):
+    """Get the grand_total of a Purchase Invoice.
+
+    Runs server-side to bypass client permission checks.
+    Returns the grand_total value, or None if not found.
+    """
+    value = frappe.db.get_value("Purchase Invoice", purchase_invoice, "grand_total")
+    return value
+
+
+@frappe.whitelist()
 def remove_shipping_cost(delivery_note_name: str):
     """Remove shipping cost from a Delivery Note"""
 
