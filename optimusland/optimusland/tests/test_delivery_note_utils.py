@@ -27,6 +27,8 @@ from optimusland.utils.delivery_note import (
 	add_shipping_cost,
 	remove_shipping_cost,
 	validate_batch_manufacture,
+	check_linked_sales_invoices,
+	get_purchase_invoice_grand_total,
 )
 
 # Non-stock item for shipping cost tests
@@ -305,3 +307,66 @@ class TestValidateBatchManufacture(IntegrationTestCase):
 			validate_batch_manufacture(dn)
 		except Exception as e:
 			self.fail(f"validate_batch_manufacture raised for non-potato: {e}")
+
+
+class TestCheckLinkedSalesInvoices(IntegrationTestCase):
+	"""Tests for check_linked_sales_invoices and get_purchase_invoice_grand_total."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		cls.company = get_or_create_test_company()
+		cls.warehouse = get_or_create_test_warehouse(cls.company.name)
+		cls.customer = get_or_create_test_customer(cls.company.name)
+		cls.ship_item = _get_ship_item()
+
+	def test_linked_si_found(self):
+		"""Returns parent SI names when linked submitted SIs exist."""
+		dn = _create_dn(
+			[{"item_code": self.ship_item.item_code, "qty": 100, "rate": 1.0}],
+			self.customer.name, self.company.name, self.warehouse.name)
+
+		si = create_test_sales_invoice(
+			[{"item_code": self.ship_item.item_code, "qty": 100, "rate": 2.0,
+			  "delivery_note": dn.name}],
+			customer=self.customer.name, company=self.company.name,
+			warehouse=self.warehouse.name)
+
+		result = check_linked_sales_invoices(dn.name)
+		self.assertIsInstance(result, list)
+		self.assertIn(si.name, result)
+
+	def test_no_linked_si_returns_empty(self):
+		"""Returns empty list when no linked submitted SIs exist."""
+		dn = _create_dn(
+			[{"item_code": self.ship_item.item_code, "qty": 100, "rate": 1.0}],
+			self.customer.name, self.company.name, self.warehouse.name)
+
+		result = check_linked_sales_invoices(dn.name)
+		self.assertEqual(result, [])
+
+	def test_unsubmitted_si_not_returned(self):
+		"""Only submitted (docstatus=1) SIs are returned, not drafts."""
+		dn = _create_dn(
+			[{"item_code": self.ship_item.item_code, "qty": 100, "rate": 1.0}],
+			self.customer.name, self.company.name, self.warehouse.name)
+
+		# Create a draft SI (do_not_submit=True)
+		si = create_test_sales_invoice(
+			[{"item_code": self.ship_item.item_code, "qty": 100, "rate": 2.0,
+			  "delivery_note": dn.name}],
+			customer=self.customer.name, company=self.company.name,
+			warehouse=self.warehouse.name, do_not_submit=True)
+
+		result = check_linked_sales_invoices(dn.name)
+		self.assertEqual(result, [])
+
+	def test_get_pi_grand_total_valid(self):
+		"""Returns grand_total for a valid Purchase Invoice."""
+		result = get_purchase_invoice_grand_total("PI-TEST-001")
+		self.assertIsNone(result)
+
+	def test_get_pi_grand_total_nonexistent(self):
+		"""Returns None for a non-existent Purchase Invoice."""
+		result = get_purchase_invoice_grand_total("NONEXISTENT-PI-999")
+		self.assertIsNone(result)
