@@ -46,7 +46,6 @@ def get_alerts(from_date=None, to_date=None):
     alerts.extend(_alert_manufactured_batch_no_dn(flt))
     alerts.extend(_alert_dn_unbilled(flt))
     alerts.extend(_alert_pi_not_linked(flt))
-    alerts.extend(_alert_supplier_unlinked_jv(flt))
 
     _sort_by_severity(alerts)
     return alerts
@@ -537,40 +536,4 @@ def _alert_pi_not_linked(flt):
     ]
 
 
-def _alert_supplier_unlinked_jv(flt):
-    """Suppliers with unlinked Journal Entries.
 
-    Reuses the existing detection in ``supplier.py`` but scoped to
-    the date range and returns a flat list of alerts.
-    """
-    # First find suppliers who were active in the date range
-    suppliers = frappe.db.sql(
-        """
-        SELECT DISTINCT pr.supplier AS entity
-        FROM `tabPurchase Receipt` pr
-        WHERE pr.docstatus = 1
-            AND pr.posting_date BETWEEN %(from_date)s AND %(to_date)s
-        """,
-        flt,
-        as_dict=True,
-    )
-    alerts = []
-    for s in suppliers:
-        try:
-            # Import here to avoid circular imports
-            from optimusland.utils.supplier import get_supplier_unlinked_journal_entries
-
-            warning = get_supplier_unlinked_journal_entries(s.entity)
-            if warning and warning is not True:
-                alerts.append(
-                    _format_alert(
-                        severity="warning",
-                        title="Supplier has unlinked Journal Entries",
-                        message=f"Supplier {s.entity}: {warning}",
-                        entity=s.entity,
-                        doctype="Supplier",
-                    )
-                )
-        except Exception:
-            continue
-    return alerts

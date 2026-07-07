@@ -1,5 +1,4 @@
-# Invoice status is managed automatically via:
-# - Journal Entry on_submit hook (optimusland.utils.invoices_status.on_journal_entry_submit)
-# - Daily cron (optimusland.utils.invoices_status.fix_unpaid_overdue_sales_invoices_status)
+# Invoice netting is handled manually via the Net Position section on
+# Supplier and Customer forms (optimusland.utils.party.create_netting_journal_entry).
 # The manual mark_paid button has been removed as part of issue #64.
         
