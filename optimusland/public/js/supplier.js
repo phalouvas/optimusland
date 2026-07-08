@@ -13,6 +13,7 @@ frappe.ui.form.on("Supplier", {
     refresh: function (frm) {
         if (!frm.doc.__islocal) {
             _add_net_position_section(frm, "Supplier");
+            _add_payment_reconciliation_action(frm, "Supplier");
         }
     },
 });
@@ -83,4 +84,14 @@ function _create_netting_je(frm, party_type) {
             }
         },
     });
+}
+
+function _add_payment_reconciliation_action(frm, party_type) {
+    frm.add_custom_button(__("Payment Reconciliation"), function () {
+        frappe.route_options = {
+            party_type: party_type,
+            party: frm.doc.name,
+        };
+        frappe.set_route("Form", "Payment Reconciliation");
+    }, __("Actions"));
 }
