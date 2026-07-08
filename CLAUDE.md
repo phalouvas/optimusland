@@ -138,7 +138,7 @@ Server-side Python functions decorated with `@frappe.whitelist()` — callable f
 | `purchase_receipt.py` | Production plan auto-creation (`on_submit`), batch auto-assignment (`validate`), Stock Entry account fixing |
 | `batch.py` | Bulk create Purchase Receipt from selected Batches |
 | `supplier.py` | Reserved for future use |
-| `party.py` | Net Position calculation and Netting Journal Entry creation for dual-role parties (Supplier/Customer Party Links) |
+| `party.py` | Net Position calculation and Netting Journal Entry creation for dual-role parties (Supplier/Customer Party Links). Uses GL balances (``get_balance_on``) not invoice outstanding. Button validates that both PI and SI GL balances are positive. |
 | `delivery_note.py` | Add/remove shipping cost, link Purchase Invoice to Delivery Note |
 | `sales_invoice.py` | Mark invoice as Paid (direct SQL — legacy) |
 | `purchase_invoice.py` | Mark invoice as Paid (direct SQL — legacy), auto-fill Purchase Receipt references |
@@ -216,3 +216,5 @@ Other fixture files exist (Delivery Note Item, Packed Item, Sales Invoice Item, 
 - Git remote: `origin` = `phalouvas/optimusland` — push to origin, PR to main
 - Error logging uses `frappe.add_comment("Comment", ...)` on the affected document rather than silent exceptions (applied in `create_production_plan` for BOM-fetch failures)
 - SI→DN linking is enforced at ERPNext core level via Selling Settings `dn_required=Yes`, no custom validation needed
+- Net Position section (`party.py`/`supplier.js`/`customer.js`) uses GL balances via ERPNext's ``get_balance_on()`` — formula: ``pi_gl = -supplier_gl``, ``si_gl = customer_gl``, ``net = pi_gl − si_gl``
+- "Create Netting Journal Entry" button only activates when both ``pi_gl > 0`` and ``si_gl > 0`` — refuses if either side is in credit. Not compatible with Common Party Accounting (disable it).

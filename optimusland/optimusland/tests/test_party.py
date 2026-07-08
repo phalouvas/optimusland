@@ -88,20 +88,38 @@ class TestPartyNetPosition(IntegrationTestCase):
         super().setUp()
         self._created_pis = []
         self._created_sis = []
+        self._created_jes = []
+        self._created_gl_entries = []
         self._cleanup_invoices()
+        self._cleanup_journal_entries()
 
     def tearDown(self):
+        self._cleanup_gl_entries()
+        self._cleanup_journal_entries()
         self._cleanup_invoices()
         super().tearDown()
 
-    def _cleanup_invoices(self):
-        """Remove test invoices and their GL entries."""
-        for name in getattr(self, "_created_pis", []):
+    def _cleanup_gl_entries(self):
+        """Remove raw GL entries created directly by tests."""
+        for name in getattr(self, "_created_gl_entries", []):
+            frappe.db.delete("GL Entry", {"name": name})
+
+    def _cleanup_journal_entries(self):
+        """Remove test JEs and their GL/PLE entries created by tests."""
+        for name in getattr(self, "_created_jes", []):
             frappe.db.delete("GL Entry", {"voucher_no": name})
+            frappe.db.delete("Payment Ledger Entry", {"voucher_no": name})
+            try:
+                frappe.delete_doc("Journal Entry", name, force=True)
+            except Exception:
+                pass
+
+    def _cleanup_invoices(self):
+        """Remove test invoices."""
+        for name in getattr(self, "_created_pis", []):
             frappe.db.delete("Purchase Invoice Item", {"parent": name})
             frappe.db.delete("Purchase Invoice", {"name": name})
         for name in getattr(self, "_created_sis", []):
-            frappe.db.delete("GL Entry", {"voucher_no": name})
             frappe.db.delete("Sales Invoice Item", {"parent": name})
             frappe.db.delete("Sales Invoice", {"name": name})
 
@@ -148,6 +166,7 @@ class TestPartyNetPosition(IntegrationTestCase):
              amount, name, self.company.name, name, name, self.dual_party_name),
         )
         self._created_pis.append(name)
+        self._created_gl_entries.append(gl_name)
 
     def _create_si(self, name, amount=1000.0, status="Unpaid"):
         """Create a Sales Invoice via raw SQL."""
@@ -191,6 +210,7 @@ class TestPartyNetPosition(IntegrationTestCase):
              amount, name, self.company.name, name, name, self.dual_party_name),
         )
         self._created_sis.append(name)
+        self._created_gl_entries.append(gl_name)
 
     # ------------------------------------------------------------------
     # Tests for get_party_net_position
@@ -290,8 +310,111 @@ class TestPartyNetPosition(IntegrationTestCase):
         self.assertEqual(si_row.debit_in_account_currency, 0)
         self.assertEqual(si_row.credit_in_account_currency, 3000.0)
 
-        # Clean up: delete the test JE
-        frappe.delete_doc("Journal Entry", je_name, force=True)
+        # Track for cleanup
+        self._created_jes.append(je_name)
+
+    def test_create_netting_je_from_customer_perspective(self):
+        """Netting JE works the same from Customer perspective."""
+        uniq = frappe.generate_hash("", 6)
+        pi_name = f"TST-PI-CUST-{uniq}"
+        si_name = f"TST-SI-CUST-{uniq}"
+        self._create_pi(pi_name, amount=5000.0)
+        self._create_si(si_name, amount=2000.0)
+
+        result = create_netting_journal_entry("Customer", self.dual_party_name)
+        self.assertTrue(result["success"])
+        je_name = result["journal_entry"]
+        self._created_jes.append(je_name)
+
+        je = frappe.get_doc("Journal Entry", je_name)
+        self.assertEqual(je.docstatus, 0)  # Draft
+        self.assertEqual(len(je.accounts), 2)
+
+        pi_row = next(a for a in je.accounts if a.reference_type == "Purchase Invoice")
+        si_row = next(a for a in je.accounts if a.reference_type == "Sales Invoice")
+        self.assertEqual(pi_row.debit_in_account_currency, 2000.0)
+        self.assertEqual(si_row.credit_in_account_currency, 2000.0)
+
+    def test_get_party_net_position_with_payments(self):
+        """GL-based net position correctly reflects payments."""
+        uniq = frappe.generate_hash("", 6)
+        self._create_pi(f"TST-PI-PMT-{uniq}", amount=1190.0)
+        self._create_si(f"TST-SI-PMT-{uniq}", amount=1190.0)
+
+        # Add a payment on supplier side: Debit Payable 400
+        pi_account = self.creditors_account
+        gl_sup_name = f"GL-PMT-SUP-{uniq}"
+        frappe.db.sql("""
+            INSERT INTO `tabGL Entry`
+            (name, posting_date, account, party_type, party,
+             debit_in_account_currency, credit_in_account_currency,
+             against, company, voucher_type, voucher_no, is_cancelled)
+            VALUES (%s, %s, %s, 'Supplier', %s, %s, 0, %s, %s,
+             'Payment Entry', %s, 0)
+        """, (gl_sup_name, frappe.utils.today(), pi_account,
+              self.dual_party_name, 400.0, f"PMT-SUP-{uniq}",
+              self.company.name, f"PMT-SUP-{uniq}"))
+        self._created_gl_entries.append(gl_sup_name)
+
+        # Add a payment on customer side: Credit Receivable 500
+        si_account = self.debtors_account
+        gl_cust_name = f"GL-PMT-CUST-{uniq}"
+        frappe.db.sql("""
+            INSERT INTO `tabGL Entry`
+            (name, posting_date, account, party_type, party,
+             debit_in_account_currency, credit_in_account_currency,
+             against, company, voucher_type, voucher_no, is_cancelled)
+            VALUES (%s, %s, %s, 'Customer', %s, 0, %s, %s, %s,
+             'Payment Entry', %s, 0)
+        """, (gl_cust_name, frappe.utils.today(), si_account,
+              self.dual_party_name, 500.0, f"PMT-CUST-{uniq}",
+              self.company.name, f"PMT-CUST-{uniq}"))
+        self._created_gl_entries.append(gl_cust_name)
+
+        # John Doe scenario: PI=1190-400=790, SI=1190-500=690
+        result = get_party_net_position("Supplier", self.dual_party_name)
+        self.assertTrue(result["has_party_link"])
+        self.assertEqual(result["pi_gl"], 790.0)  # 1190 - 400
+        self.assertEqual(result["si_gl"], 690.0)  # 1190 - 500
+        self.assertEqual(result["net_position"], 100.0)
+        self.assertIn("Owed to Supplier", result["net_label"])
+
+    def test_create_netting_je_multiple_invoices(self):
+        """Creates rows for all invoices when netting amount spans multiple."""
+        uniq = frappe.generate_hash("", 6)
+        self._create_pi(f"TST-PI-M1-{uniq}", amount=3000.0)
+        self._create_pi(f"TST-PI-M2-{uniq}", amount=3000.0)
+        self._create_si(f"TST-SI-M1-{uniq}", amount=2000.0)
+        self._create_si(f"TST-SI-M2-{uniq}", amount=2000.0)
+
+        result = create_netting_journal_entry("Supplier", self.dual_party_name)
+        self.assertTrue(result["success"])
+        je_name = result["journal_entry"]
+        self._created_jes.append(je_name)
+
+        je = frappe.get_doc("Journal Entry", je_name)
+        # 4 rows: 2 PIs + 2 SIs (each needs partial allocation)
+        self.assertEqual(len(je.accounts), 4)
+
+        pi_rows = [a for a in je.accounts if a.reference_type == "Purchase Invoice"]
+        si_rows = [a for a in je.accounts if a.reference_type == "Sales Invoice"]
+        self.assertEqual(len(pi_rows), 2)
+        self.assertEqual(len(si_rows), 2)
+
+        # Netting amount = min(6000, 4000) = 4000
+        pi_total = sum(r.debit_in_account_currency for r in pi_rows)
+        si_total = sum(r.credit_in_account_currency for r in si_rows)
+        self.assertEqual(pi_total, 4000.0)
+        self.assertEqual(si_total, 4000.0)
+
+    def test_create_netting_je_si_only_returns_error(self):
+        """Creating a netting JE when only SI exists returns an error."""
+        uniq = frappe.generate_hash("", 6)
+        self._create_si(f"TST-SI-ONLY-{uniq}", amount=5000.0)
+
+        result = create_netting_journal_entry("Supplier", self.dual_party_name)
+        self.assertFalse(result["success"])
+        self.assertIn("no payable", result.get("error", "").lower())
 
     def test_create_netting_je_zero_outstanding(self):
         """Creating a netting JE when outstanding is zero returns an error."""
