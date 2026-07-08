@@ -129,6 +129,8 @@ class TestPartyNetPosition(IntegrationTestCase):
             """,
             (pi_item_name, name, amount / 10, amount, self.warehouse.name),
         )
+        # Set credit_to to the Payable account (needed for JE reference validation)
+        frappe.db.set_value("Purchase Invoice", name, "credit_to", self.creditors_account)
         # Create GL entries that keep the balance non-zero
         account = self.creditors_account or "2110 - Creditors - OL"
         gl_name = f"{name}-gl-1"
@@ -137,12 +139,13 @@ class TestPartyNetPosition(IntegrationTestCase):
             INSERT INTO `tabGL Entry`
             (name, posting_date, account, party_type, party,
              debit_in_account_currency, credit_in_account_currency,
-             against, company, voucher_type, voucher_no, is_cancelled)
+             against, company, voucher_type, voucher_no, is_cancelled,
+             against_voucher, against_voucher_type)
             VALUES (%s, %s, %s, 'Supplier', %s, %s, 0, %s, %s,
-             'Purchase Invoice', %s, 0)
+             'Purchase Invoice', %s, 0, %s, %s)
             """,
             (gl_name, frappe.utils.today(), account, self.dual_party_name,
-             amount, name, self.company.name, name),
+             amount, name, self.company.name, name, name, self.dual_party_name),
         )
         self._created_pis.append(name)
 
@@ -170,6 +173,8 @@ class TestPartyNetPosition(IntegrationTestCase):
             """,
             (si_item_name, name, amount / 10, amount, self.warehouse.name),
         )
+        # Set debit_to to the Receivable account (needed for JE reference validation)
+        frappe.db.set_value("Sales Invoice", name, "debit_to", self.debtors_account)
         account = self.debtors_account or "1310 - Debtors - OL"
         gl_name = f"{name}-gl-1"
         frappe.db.sql(
@@ -177,12 +182,13 @@ class TestPartyNetPosition(IntegrationTestCase):
             INSERT INTO `tabGL Entry`
             (name, posting_date, account, party_type, party,
              debit_in_account_currency, credit_in_account_currency,
-             against, company, voucher_type, voucher_no, is_cancelled)
+             against, company, voucher_type, voucher_no, is_cancelled,
+             against_voucher, against_voucher_type)
             VALUES (%s, %s, %s, 'Customer', %s, %s, 0, %s, %s,
-             'Sales Invoice', %s, 0)
+             'Sales Invoice', %s, 0, %s, %s)
             """,
             (gl_name, frappe.utils.today(), account, self.dual_party_name,
-             amount, name, self.company.name, name),
+             amount, name, self.company.name, name, name, self.dual_party_name),
         )
         self._created_sis.append(name)
 
@@ -253,10 +259,12 @@ class TestPartyNetPosition(IntegrationTestCase):
         self.assertIn("No Party Link", result.get("error", ""))
 
     def test_create_netting_je_success(self):
-        """Creates a draft JE with the correct netting amount."""
+        """Creates a draft JE with the correct netting amount and invoice references."""
         uniq = frappe.generate_hash("", 6)
-        self._create_pi(f"TST-PI-JE-{uniq}", amount=8000.0)
-        self._create_si(f"TST-SI-JE-{uniq}", amount=3000.0)
+        pi_name = f"TST-PI-JE-{uniq}"
+        si_name = f"TST-SI-JE-{uniq}"
+        self._create_pi(pi_name, amount=8000.0)
+        self._create_si(si_name, amount=3000.0)
 
         result = create_netting_journal_entry("Supplier", self.dual_party_name)
         self.assertTrue(result["success"])
@@ -268,10 +276,19 @@ class TestPartyNetPosition(IntegrationTestCase):
         self.assertEqual(je.docstatus, 0)  # Draft
         self.assertEqual(len(je.accounts), 2)
 
-        # Verify accounts
-        accounts = {acc.debit_in_account_currency: acc for acc in je.accounts}
-        self.assertIn(3000.0, accounts)
-        self.assertIn(0.0, accounts)
+        # Find the PI and SI rows
+        pi_row = next(a for a in je.accounts if a.reference_type == "Purchase Invoice")
+        si_row = next(a for a in je.accounts if a.reference_type == "Sales Invoice")
+
+        # PI row: Debit Payable referencing the PI, amount = min(8000, 3000) = 3000
+        self.assertEqual(pi_row.reference_name, pi_name)
+        self.assertEqual(pi_row.debit_in_account_currency, 3000.0)
+        self.assertEqual(pi_row.credit_in_account_currency, 0)
+
+        # SI row: Credit Receivable referencing the SI
+        self.assertEqual(si_row.reference_name, si_name)
+        self.assertEqual(si_row.debit_in_account_currency, 0)
+        self.assertEqual(si_row.credit_in_account_currency, 3000.0)
 
         # Clean up: delete the test JE
         frappe.delete_doc("Journal Entry", je_name, force=True)
