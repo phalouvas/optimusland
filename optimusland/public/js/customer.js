@@ -2,17 +2,17 @@
 // See license.txt
 
 /**
- * Supplier form script — Net Position section.
+ * Customer form script — Net Position section.
  *
- * When a Supplier has a Party Link to a Customer (dual-role party),
+ * When a Customer has a Party Link to a Supplier (dual-role party),
  * displays the net position between PI and SI outstanding amounts
  * and provides a "Create Netting Journal Entry" button.
  */
 
-frappe.ui.form.on("Supplier", {
+frappe.ui.form.on("Customer", {
     refresh: function (frm) {
         if (!frm.doc.__islocal) {
-            _add_net_position_section(frm, "Supplier");
+            _add_net_position_section(frm, "Customer");
         }
     },
 });
@@ -31,16 +31,16 @@ function _add_net_position_section(frm, party_type) {
                 const html = `
                     <table class="table table-bordered table-sm" style="margin-bottom: 0; max-width: 500px;">
                         <tr>
-                            <td style="width: 50%;"><strong>${__("Linked Customer")}</strong></td>
+                            <td style="width: 50%;"><strong>${__("Linked Supplier")}</strong></td>
                             <td><a href="/app/${d.linked_party_type.toLowerCase()}/${encodeURIComponent(d.linked_party)}">${d.linked_party}</a></td>
-                        </tr>
-                        <tr>
-                            <td><strong>${__("Payable GL")}</strong></td>
-                            <td>${frappe.format(d.pi_gl, { fieldtype: "Currency" })}</td>
                         </tr>
                         <tr>
                             <td><strong>${__("Receivable GL")}</strong></td>
                             <td>${frappe.format(d.si_gl, { fieldtype: "Currency" })}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>${__("Payable GL")}</strong></td>
+                            <td>${frappe.format(d.pi_gl, { fieldtype: "Currency" })}</td>
                         </tr>
                         <tr style="font-weight: bold; background: #f0f7ff;">
                             <td><strong>${__("Net Position")}</strong></td>

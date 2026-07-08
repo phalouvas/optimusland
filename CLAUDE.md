@@ -127,7 +127,6 @@ There is no custom app initialization beyond setting `__version__ = "16.0.1"` in
 
 - **Purchase Receipt**: `on_submit` triggers `create_production_plan` (auto-creates Production Plan → Work Orders → Stock Entries). `validate` triggers `set_batch_no` which auto-assigns or creates Batch documents for "Potatoes" item group items. `create_production_plan` now sets `custom_production_plan` on PR for traceability and logs BOM failures as PR comments (not silent skips).
 - **Delivery Note**: `before_submit` triggers `validate_batch_manufacture` — blocks DN submission if batches haven't been manufactured.
-- **Journal Entry**: `on_submit` and `on_cancel` hooks in `invoices_status.py` — auto-mark invoices as Paid when GL balance ≈ 0, and revert on cancellation.
 - **Sales Invoice**: No custom hooks — SI→DN linking is enforced natively via Selling Settings `dn_required=Yes`.
 
 ### Python Utility Modules (`optimusland/utils/`)
@@ -138,11 +137,11 @@ Server-side Python functions decorated with `@frappe.whitelist()` — callable f
 |------|---------|
 | `purchase_receipt.py` | Production plan auto-creation (`on_submit`), batch auto-assignment (`validate`), Stock Entry account fixing |
 | `batch.py` | Bulk create Purchase Receipt from selected Batches |
-| `supplier.py` | Detect unlinked Journal Entries on Supplier forms |
+| `supplier.py` | Reserved for future use |
+| `party.py` | Net Position calculation and Netting Journal Entry creation for dual-role parties (Supplier/Customer Party Links). Uses GL balances (``get_balance_on``) not invoice outstanding. Button validates that both PI and SI GL balances are positive. |
 | `delivery_note.py` | Add/remove shipping cost, link Purchase Invoice to Delivery Note |
-| `sales_invoice.py` | Mark invoice as Paid (direct SQL — legacy, see `invoices_status.py` for current approach) |
+| `sales_invoice.py` | Mark invoice as Paid (direct SQL — legacy) |
 | `purchase_invoice.py` | Mark invoice as Paid (direct SQL — legacy), auto-fill Purchase Receipt references |
-| `invoices_status.py` | GL-based invoice status reconciliation (JE `on_submit`/`on_cancel` hooks + daily cron). Replaced `mark_paid` SQL functions. |
 | `payment_reminder.py` | Daily scheduled task — send Email/SMS payment reminders for overdue Sales Invoices (levels 1–4) |
 | `pipeline.py` | Manufacturing Pipeline Dashboard data queries, alert detection, retry/submit actions — called from the workspace Custom HTML Block |
 | `pipeline_monitor.py` | Daily pipeline health digest email — sends critical/warning alerts to configured recipients |
@@ -157,7 +156,8 @@ Injected into standard ERPNext DocType forms via **`doctype_js`** in hooks (form
 | `purchase_receipt.js` | Purchase Receipt form | Sorts items by qty descending before save; filters `custom_weight_slip` by supplier |
 | `batch.js` | Batch form | Auto-generates `batch_id` on new Batch records |
 | `batch_list.js` | Batch list view | "Create Purchase Receipt" action from selected Batches (validates same supplier) |
-| `supplier.js` | Supplier form | On load: checks for unlinked Journal Entries, shows warning alert |
+| `supplier.js` | Supplier form | Displays Net Position section with "Create Netting Journal Entry" button (dual-role parties via Party Link) |
+| `customer.js` | Customer form | Displays Net Position section with "Create Netting Journal Entry" button (dual-role parties via Party Link) |
 | `delivery_note.js` | Delivery Note form | "Add Shipping Cost" dialog + "Remove Shipping Cost" button (submitted DNs only) |
 | `sales_invoice.js` | Sales Invoice form | "Mark as Paid" button (submitted+overdue); Incoterm reminder on new invoices |
 | `purchase_invoice.js` | Purchase Invoice form | "Mark as Paid" button (submitted+overdue); naming series reminder on new invoices |
@@ -180,7 +180,7 @@ A **separate workspace** (restricted to System Manager role) for full-cycle pipe
 The workspace shows:
 - **Shortcuts** with `stats_filter` for live alert counts (Failed PRs, Stuck WOs, Unbilled DNs)
 - **Custom HTML Block**: Interactive pipeline table with color-coded status, click-to-navigate entity links, Retry/Submit action buttons. All three tiers and alerts start collapsed by default.
-- **Alerts panel**: Cross-cutting issues — orphaned PRs, missing BOMs, stuck WOs, unbilled DNs, manufactured batches ready to ship, unlinked PIs, unlinked supplier JVs
+- **Alerts panel**: Cross-cutting issues — orphaned PRs, missing BOMs, stuck WOs, unbilled DNs, manufactured batches ready to ship, unlinked PIs
 
 Access it from the Optimus sidebar under **Settings → Manufacturing Pipeline**. Configured via `optimusland/optimusland/workspace/manufacturing_pipeline/manufacturing_pipeline.json`. The Custom HTML Block is created automatically by `after_migrate` (`setup.py`) and served from `optimusland/public/html/pipeline_table.html`. Python backend at `utils/pipeline.py` with `@frappe.whitelist()` methods. Daily digest email via `utils/pipeline_monitor.py`.
 
@@ -216,3 +216,5 @@ Other fixture files exist (Delivery Note Item, Packed Item, Sales Invoice Item, 
 - Git remote: `origin` = `phalouvas/optimusland` — push to origin, PR to main
 - Error logging uses `frappe.add_comment("Comment", ...)` on the affected document rather than silent exceptions (applied in `create_production_plan` for BOM-fetch failures)
 - SI→DN linking is enforced at ERPNext core level via Selling Settings `dn_required=Yes`, no custom validation needed
+- Net Position section (`party.py`/`supplier.js`/`customer.js`) uses GL balances via ERPNext's ``get_balance_on()`` — formula: ``pi_gl = -supplier_gl``, ``si_gl = customer_gl``, ``net = pi_gl − si_gl``
+- "Create Netting Journal Entry" button only activates when both ``pi_gl > 0`` and ``si_gl > 0`` — refuses if either side is in credit. Not compatible with Common Party Accounting (disable it).
