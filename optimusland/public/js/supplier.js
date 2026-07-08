@@ -35,12 +35,12 @@ function _add_net_position_section(frm, party_type) {
                             <td><a href="/app/${d.linked_party_type.toLowerCase()}/${encodeURIComponent(d.linked_party)}">${d.linked_party}</a></td>
                         </tr>
                         <tr>
-                            <td><strong>${__("PI Outstanding")}</strong></td>
-                            <td>${frappe.format(d.pi_outstanding, { fieldtype: "Currency" })}</td>
+                            <td><strong>${__("Payable GL")}</strong></td>
+                            <td>${frappe.format(d.pi_gl, { fieldtype: "Currency" })}</td>
                         </tr>
                         <tr>
-                            <td><strong>${__("SI Outstanding")}</strong></td>
-                            <td>${frappe.format(d.si_outstanding, { fieldtype: "Currency" })}</td>
+                            <td><strong>${__("Receivable GL")}</strong></td>
+                            <td>${frappe.format(d.si_gl, { fieldtype: "Currency" })}</td>
                         </tr>
                         <tr style="font-weight: bold; background: #f0f7ff;">
                             <td><strong>${__("Net Position")}</strong></td>

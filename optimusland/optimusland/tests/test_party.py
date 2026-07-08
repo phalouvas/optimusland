@@ -131,7 +131,7 @@ class TestPartyNetPosition(IntegrationTestCase):
         )
         # Set credit_to to the Payable account (needed for JE reference validation)
         frappe.db.set_value("Purchase Invoice", name, "credit_to", self.creditors_account)
-        # Create GL entries that keep the balance non-zero
+        # Create GL entries that reflect a real Purchase Invoice (Credit Payable)
         account = self.creditors_account or "2110 - Creditors - OL"
         gl_name = f"{name}-gl-1"
         frappe.db.sql(
@@ -141,7 +141,7 @@ class TestPartyNetPosition(IntegrationTestCase):
              debit_in_account_currency, credit_in_account_currency,
              against, company, voucher_type, voucher_no, is_cancelled,
              against_voucher, against_voucher_type)
-            VALUES (%s, %s, %s, 'Supplier', %s, %s, 0, %s, %s,
+            VALUES (%s, %s, %s, 'Supplier', %s, 0, %s, %s, %s,
              'Purchase Invoice', %s, 0, %s, %s)
             """,
             (gl_name, frappe.utils.today(), account, self.dual_party_name,
@@ -202,50 +202,50 @@ class TestPartyNetPosition(IntegrationTestCase):
         self.assertFalse(result["has_party_link"])
 
     def test_returns_correct_outstanding_from_supplier(self):
-        """Supplier perspective returns correct PI and SI totals."""
+        """Supplier perspective returns correct PI and SI GL balances."""
         uniq = frappe.generate_hash("", 6)
         self._create_pi(f"TST-PI-NET-{uniq}", amount=5000.0)
         self._create_si(f"TST-SI-NET-{uniq}", amount=2000.0)
 
         result = get_party_net_position("Supplier", self.dual_party_name)
         self.assertTrue(result["has_party_link"])
-        self.assertEqual(result["pi_outstanding"], 5000.0)
-        self.assertEqual(result["si_outstanding"], 2000.0)
+        self.assertEqual(result["pi_gl"], 5000.0)
+        self.assertEqual(result["si_gl"], 2000.0)
         self.assertEqual(result["net_position"], 3000.0)
         self.assertIn("Owed to Supplier", result["net_label"])
 
     def test_returns_correct_outstanding_from_customer(self):
-        """Customer perspective returns correct SI and PI totals."""
+        """Customer perspective returns correct SI and PI GL balances."""
         uniq = frappe.generate_hash("", 6)
         self._create_pi(f"TST-PI-NET2-{uniq}", amount=3000.0)
         self._create_si(f"TST-SI-NET2-{uniq}", amount=1000.0)
 
         result = get_party_net_position("Customer", self.dual_party_name)
         self.assertTrue(result["has_party_link"])
-        self.assertEqual(result["pi_outstanding"], 3000.0)
-        self.assertEqual(result["si_outstanding"], 1000.0)
+        self.assertEqual(result["pi_gl"], 3000.0)
+        self.assertEqual(result["si_gl"], 1000.0)
         self.assertEqual(result["net_position"], 2000.0)
         self.assertIn("Owed to Supplier", result["net_label"])
 
     def test_negative_net_position(self):
-        """When SI outstanding > PI outstanding, label says 'Owed by Customer'."""
+        """When SI GL > PI GL, label says 'Owed by Customer'."""
         uniq = frappe.generate_hash("", 6)
         self._create_pi(f"TST-PI-NET3-{uniq}", amount=1000.0)
         self._create_si(f"TST-SI-NET3-{uniq}", amount=3000.0)
 
         result = get_party_net_position("Supplier", self.dual_party_name)
         self.assertTrue(result["has_party_link"])
-        self.assertEqual(result["pi_outstanding"], 1000.0)
-        self.assertEqual(result["si_outstanding"], 3000.0)
+        self.assertEqual(result["pi_gl"], 1000.0)
+        self.assertEqual(result["si_gl"], 3000.0)
         self.assertEqual(result["net_position"], 2000.0)
         self.assertIn("Owed by Customer", result["net_label"])
 
     def test_zero_outstanding_returns_zero(self):
-        """When no invoices exist, both outstanding amounts are zero."""
+        """When no GL entries exist, both balances are zero."""
         result = get_party_net_position("Supplier", self.dual_party_name)
         self.assertTrue(result["has_party_link"])
-        self.assertEqual(result["pi_outstanding"], 0.0)
-        self.assertEqual(result["si_outstanding"], 0.0)
+        self.assertEqual(result["pi_gl"], 0.0)
+        self.assertEqual(result["si_gl"], 0.0)
         self.assertEqual(result["net_position"], 0.0)
 
     # ------------------------------------------------------------------

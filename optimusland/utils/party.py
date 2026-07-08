@@ -13,6 +13,7 @@ Provides two ``@frappe.whitelist()`` functions callable from client-side JS:
 
 import frappe
 from frappe.utils import flt
+from erpnext.accounts.utils import get_balance_on
 
 # ---------------------------------------------------------------------------
 # Public — callable from client-side JS via frappe.call()
@@ -23,6 +24,10 @@ from frappe.utils import flt
 def get_party_net_position(party_type: str, party_name: str) -> dict:
     """Return the net position for a dual-role party linked via Party Link.
 
+    Uses GL balances (``tabGL Entry``) rather than invoice ``outstanding_amount``
+    to give accurate positions even after Common Party Accounting has run its
+    automatic netting Journal Entries.
+
     Args:
         party_type: ``"Supplier"`` or ``"Customer"``.
         party_name: Name of the party.
@@ -32,34 +37,53 @@ def get_party_net_position(party_type: str, party_name: str) -> dict:
         - ``has_party_link`` (bool) — whether a Party Link was found.
         - ``linked_party`` (str) — the linked party name.
         - ``linked_party_type`` (str) — ``"Supplier"`` or ``"Customer"``.
-        - ``pi_outstanding`` (float) — total PI outstanding amount.
-        - ``si_outstanding`` (float) — total SI outstanding amount.
-        - ``net_position`` (float) — ``abs(PI − SI)``.
+        - ``customer_gl`` (float) — Receivable GL balance (positive = customer owes us).
+        - ``supplier_gl`` (float) — Payable GL balance (negative = we owe supplier).
+        - ``net_position`` (float) — absolute net |we_owe − they_owe|.
         - ``net_label`` (str) — ``"Owed to Supplier"`` or ``"Owed by Customer"``.
     """
     linked = _find_linked_party(party_type, party_name)
     if not linked:
         return {"has_party_link": False}
 
-    supplier_name = linked["supplier_name"]
-    customer_name = linked["customer_name"]
+    company = frappe.defaults.get_user_default("Company")
 
-    pi_outstanding = _get_total_outstanding("Purchase Invoice", "supplier", supplier_name)
-    si_outstanding = _get_total_outstanding("Sales Invoice", "customer", customer_name)
+    # GL balances — these are the REAL numbers, not invoice outstanding
+    customer_gl = get_balance_on(
+        party_type="Customer",
+        party=linked["customer_name"],
+        account_type="Receivable",
+        company=company,
+    )
+    supplier_gl = get_balance_on(
+        party_type="Supplier",
+        party=linked["supplier_name"],
+        account_type="Payable",
+        company=company,
+    )
 
-    net = pi_outstanding - si_outstanding
+    # get_balance_on returns sum(debit) − sum(credit)
+    # For Payable: negative = normal credit balance = we owe supplier
+    # For Receivable: positive = normal debit balance = customer owes us
+    # Flip supplier sign so positive means "we owe supplier"
+    pi_gl = -supplier_gl
+    si_gl = customer_gl
+
+    net = pi_gl - si_gl
 
     if net >= 0:
-        net_label = f"Owed to Supplier ({supplier_name})"
+        net_label = f"Owed to Supplier ({linked['supplier_name']})"
     else:
-        net_label = f"Owed by Customer ({customer_name})"
+        net_label = f"Owed by Customer ({linked['customer_name']})"
 
     return {
         "has_party_link": True,
         "linked_party": linked["other_party"],
         "linked_party_type": linked["other_type"],
-        "pi_outstanding": pi_outstanding,
-        "si_outstanding": si_outstanding,
+        "customer_gl": customer_gl,
+        "supplier_gl": supplier_gl,
+        "pi_gl": pi_gl,
+        "si_gl": si_gl,
         "net_position": abs(net),
         "net_label": net_label,
     }
@@ -90,9 +114,9 @@ def create_netting_journal_entry(party_type: str, party_name: str) -> dict:
     if not position.get("has_party_link"):
         return {"success": False, "error": "No Party Link found for this party."}
 
-    pi_outstanding = position["pi_outstanding"]
-    si_outstanding = position["si_outstanding"]
-    netting_amount = min(pi_outstanding, si_outstanding)
+    pi_gl = position["pi_gl"]
+    si_gl = position["si_gl"]
+    netting_amount = min(abs(pi_gl), abs(si_gl))
 
     if netting_amount <= 0:
         return {
@@ -294,18 +318,3 @@ def _find_linked_party(party_type: str, party_name: str) -> dict | None:
             }
 
     return None
-
-
-def _get_total_outstanding(doctype: str, party_field: str, party_name: str) -> float:
-    """Sum ``outstanding_amount`` for submitted, unpaid invoices."""
-    result = frappe.db.sql(
-        f"""
-        SELECT COALESCE(SUM(outstanding_amount), 0)
-        FROM `tab{doctype}`
-        WHERE {party_field} = %s
-            AND docstatus = 1
-            AND status IN ('Unpaid', 'Overdue', 'Partly Paid')
-        """,
-        party_name,
-    )
-    return flt(result[0][0])
