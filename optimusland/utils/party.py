@@ -93,10 +93,15 @@ def get_party_net_position(party_type: str, party_name: str) -> dict:
 def create_netting_journal_entry(party_type: str, party_name: str) -> dict:
     """Create a draft Journal Entry to net PI and SI outstanding amounts.
 
-    The netting amount is the **smaller** of the two outstanding totals.
-    The resulting JE references specific Purchase Invoices and Sales
-    Invoices via ``reference_type`` / ``reference_name`` on each account
-    row, so ERPNext's Payment Ledger Entry mechanism correctly reduces
+    Only works for the standard case where both GL balances are in the
+    normal direction:
+    - We owe the supplier (``pi_gl > 0``) AND the customer owes us (``si_gl > 0``)
+    - The JE debits the Payable account and credits the Receivable account,
+      reducing both balances by the netting amount.
+
+    The JE references specific unpaid Purchase Invoices and Sales Invoices
+    via ``reference_type`` / ``reference_name`` on each account row, so
+    ERPNext's Payment Ledger Entry mechanism correctly reduces
     ``outstanding_amount`` on the referenced invoices.
 
     The JE is saved as a draft (not submitted) so the user can review,
@@ -116,13 +121,22 @@ def create_netting_journal_entry(party_type: str, party_name: str) -> dict:
 
     pi_gl = position["pi_gl"]
     si_gl = position["si_gl"]
-    netting_amount = min(abs(pi_gl), abs(si_gl))
 
-    if netting_amount <= 0:
+    # Only handle the standard case: we owe supplier AND customer owes us
+    if pi_gl <= 0:
         return {
             "success": False,
-            "error": "Nothing to net — one or both outstanding amounts are zero.",
+            "error": f"Supplier balance (€{abs(pi_gl):,.2f}) is in credit. "
+            "No payable to net against receivables.",
         }
+    if si_gl <= 0:
+        return {
+            "success": False,
+            "error": f"Customer balance (€{abs(si_gl):,.2f}) is in credit. "
+            "No receivable to net against payables.",
+        }
+
+    netting_amount = min(pi_gl, si_gl)
 
     company = frappe.defaults.get_user_default("Company")
     if not company:
@@ -146,12 +160,30 @@ def create_netting_journal_entry(party_type: str, party_name: str) -> dict:
         return {"success": False, "error": "Could not resolve linked party."}
 
     # Fetch specific unpaid invoices (oldest first) to reference in the JE
-    unpaid_pis = _get_outstanding_invoices("Purchase Invoice", "supplier", linked["supplier_name"])
-    unpaid_sis = _get_outstanding_invoices("Sales Invoice", "customer", linked["customer_name"])
+    unpaid_pis = _get_outstanding_invoices("Purchase Invoice", "supplier", "credit_to", linked["supplier_name"])
+    unpaid_sis = _get_outstanding_invoices("Sales Invoice", "customer", "debit_to", linked["customer_name"])
+
+    pi_total = sum(inv.outstanding_amount for inv in unpaid_pis)
+    si_total = sum(inv.outstanding_amount for inv in unpaid_sis)
+
+    if pi_total < netting_amount or si_total < netting_amount:
+        return {
+            "success": False,
+            "error": f"Invoice outstanding totals (PI: €{pi_total:,.2f}, SI: €{si_total:,.2f}) "
+            f"don't match GL balances (PI: €{pi_gl:,.2f}, SI: €{si_gl:,.2f}). "
+            "This may be due to data inconsistency. Netting aborted.",
+        }
 
     # Distribute the netting amount across the invoices
-    pi_rows = _allocate_invoice_rows(unpaid_pis, netting_amount, "debit")
-    si_rows = _allocate_invoice_rows(unpaid_sis, netting_amount, "credit")
+    pi_rows = _allocate_invoice_rows(unpaid_pis, netting_amount)
+    si_rows = _allocate_invoice_rows(unpaid_sis, netting_amount)
+
+    if not pi_rows or not si_rows:
+        return {
+            "success": False,
+            "error": "Could not allocate netting amount across unpaid invoices. "
+            "No unpaid invoices found for one or both parties.",
+        }
 
     # Build user-friendly remark listing which invoices are being netted
     pi_refs = ", ".join(r["reference_name"] for r in pi_rows)
@@ -165,11 +197,11 @@ def create_netting_journal_entry(party_type: str, party_name: str) -> dict:
     try:
         accounts = []
 
-        # PI side: Debit Payable referencing each PI
+        # Debit Payable referencing each PI (reduces what we owe)
         for row in pi_rows:
             accounts.append(
                 {
-                    "account": payable_account,
+                    "account": row["account"],
                     "party_type": "Supplier",
                     "party": linked["supplier_name"],
                     "reference_type": "Purchase Invoice",
@@ -179,11 +211,11 @@ def create_netting_journal_entry(party_type: str, party_name: str) -> dict:
                 }
             )
 
-        # SI side: Credit Receivable referencing each SI
+        # Credit Receivable referencing each SI (reduces what we're owed)
         for row in si_rows:
             accounts.append(
                 {
-                    "account": receivable_account,
+                    "account": row["account"],
                     "party_type": "Customer",
                     "party": linked["customer_name"],
                     "reference_type": "Sales Invoice",
@@ -219,14 +251,15 @@ def create_netting_journal_entry(party_type: str, party_name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _get_outstanding_invoices(doctype: str, party_field: str, party_name: str) -> list[dict]:
+def _get_outstanding_invoices(doctype: str, party_field: str, account_field: str, party_name: str) -> list[dict]:
     """Fetch individual unpaid invoices for a party, ordered oldest first.
 
-    Returns a list of dicts with ``name`` and ``outstanding_amount``.
+    Returns a list of dicts with ``invoice_name``, ``outstanding_amount``,
+    and ``account`` (the ``credit_to`` for PI or ``debit_to`` for SI).
     """
     return frappe.db.sql(
         f"""
-        SELECT name AS invoice_name, outstanding_amount
+        SELECT name AS invoice_name, outstanding_amount, {account_field} AS account
         FROM `tab{doctype}`
         WHERE {party_field} = %s
             AND docstatus = 1
@@ -239,20 +272,17 @@ def _get_outstanding_invoices(doctype: str, party_field: str, party_name: str) -
     )
 
 
-def _allocate_invoice_rows(
-    invoices: list[dict], total_amount: float, dr_or_cr: str
-) -> list[dict]:
+def _allocate_invoice_rows(invoices: list[dict], total_amount: float) -> list[dict]:
     """Distribute ``total_amount`` across invoices, oldest first.
 
     Args:
-        invoices: List of dicts with ``invoice_name`` and ``outstanding_amount``.
+        invoices: List of dicts with ``invoice_name``, ``outstanding_amount``,
+            and ``account`` (the invoice's party account).
         total_amount: Total amount to allocate.
-        dr_or_cr: ``"debit"`` or ``"credit"`` — passed through to the result.
 
     Returns:
-        A list of dicts with ``reference_name`` and ``amount``, one per invoice
-        that receives a non-zero allocation.  The sum of all amounts equals
-        ``total_amount``.
+        A list of dicts with ``reference_name``, ``amount``, and ``account``,
+        one per invoice that receives a non-zero allocation.
     """
     remaining = total_amount
     rows = []
@@ -260,7 +290,11 @@ def _allocate_invoice_rows(
         if remaining <= 0:
             break
         alloc = min(inv.outstanding_amount, remaining)
-        rows.append({"reference_name": inv.invoice_name, "amount": alloc})
+        rows.append({
+            "reference_name": inv.invoice_name,
+            "amount": alloc,
+            "account": inv.account,
+        })
         remaining -= alloc
     return rows
 

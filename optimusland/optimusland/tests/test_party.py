@@ -297,4 +297,4 @@ class TestPartyNetPosition(IntegrationTestCase):
         """Creating a netting JE when outstanding is zero returns an error."""
         result = create_netting_journal_entry("Supplier", self.dual_party_name)
         self.assertFalse(result["success"])
-        self.assertIn("zero", result.get("error", "").lower())
+        self.assertIn("no payable", result.get("error", "").lower())
