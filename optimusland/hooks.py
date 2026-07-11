@@ -146,9 +146,6 @@ doc_events = {
     "Purchase Receipt": {
         "validate": "optimusland.utils.purchase_receipt.set_batch_no",
     },
-    "Delivery Note": {
-        "before_submit": "optimusland.utils.delivery_note.validate_batch_repacked"
-    },
 }
 
 # Scheduled Tasks
