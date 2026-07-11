@@ -5,12 +5,3 @@ frappe.ui.form.on('Delivery Note', {
         // on submitted DNs is preserved in the database (fields hidden).
     }
 });
-                                }
-                            });
-                        }
-                    );
-                }).addClass("btn-danger");
-            }
-        }
-    }
-});
