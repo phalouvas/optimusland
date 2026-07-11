@@ -47,7 +47,7 @@ def calculate_grower_price(sales_invoice, margin_pct=None):
         frappe.throw(f"Sales Invoice {sales_invoice} is cancelled.")
 
     cfg = _get_config()
-    margin_pct = margin_pct if margin_pct is not None else cfg.default_target_margin_pct
+    margin_pct = flt(margin_pct) if margin_pct is not None else flt(cfg.default_target_margin_pct)
     base_rate_data = get_base_rate(si.company)
     op_rate = flt(base_rate_data.get("operating_rate", 0))
     cap_rate = flt(base_rate_data.get("capital_rate", 0))
@@ -230,7 +230,7 @@ def create_purchase_invoice(supplier, weight_slip, line_items, margin_pct=None):
     if not line_items:
         frappe.throw("No line items provided for Purchase Invoice.")
 
-    margin_pct = margin_pct or _get_config().default_target_margin_pct
+    margin_pct = flt(margin_pct) or flt(_get_config().default_target_margin_pct)
 
     # Get calculation breakdown for audit
     first_item = line_items[0]
@@ -295,7 +295,7 @@ def _get_config():
     """Get configuration from Optimus General Settings."""
     settings = frappe.get_single("Optimus General Settings")
     return frappe._dict(
-        default_target_margin_pct=settings.default_target_margin_pct or 6,
+        default_target_margin_pct=flt(settings.default_target_margin_pct) or 6,
         operating_lookback_days=settings.operating_lookback_days or 90,
     )
 

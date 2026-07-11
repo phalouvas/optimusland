@@ -17,8 +17,7 @@
    "fieldname": "description",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Description",
-   "reqd": 1
+   "label": "Description"
   },
   {
    "columns": 2,

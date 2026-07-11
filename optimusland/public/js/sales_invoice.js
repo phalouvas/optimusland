@@ -49,7 +49,7 @@ function _show_add_cost_dialog(frm) {
                 label: __('Description'),
                 fieldname: 'description',
                 fieldtype: 'Data',
-                reqd: 1
+                reqd: 0
             },
             {
                 label: __('Amount'),
