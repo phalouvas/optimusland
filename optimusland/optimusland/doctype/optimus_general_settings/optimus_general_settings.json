@@ -13,6 +13,18 @@
   "templates",
   "section_break_pipeline",
   "pipeline_alert_recipients",
+  "section_break_blended_rate",
+  "operating_lookback_days",
+  "operating_half_life_days",
+  "capital_lookback_days",
+  "operating_accounts",
+  "depreciation_accounts",
+  "default_target_margin_pct",
+  "section_break_sanity_checks",
+  "sanity_check_max_operating_rate",
+  "sanity_check_min_operating_rate",
+  "rate_stability_threshold_pct",
+  "reconciliation_variance_threshold_pct",
   "section_break_variables_help",
   "html_help"
  ],
@@ -63,7 +75,89 @@
    "fieldname": "pipeline_alert_recipients",
    "fieldtype": "Small Text",
    "label": "Pipeline Alert Recipients",
-   "description": "Comma-separated email addresses for the daily pipeline health digest."
+   "description": "Comma-separated email addresses for alert notifications."
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_blended_rate",
+   "fieldtype": "Section Break",
+   "label": "Blended Rate Configuration"
+  },
+  {
+   "default": "90",
+   "fieldname": "operating_lookback_days",
+   "fieldtype": "Int",
+   "label": "Operating Rate Lookback (days)",
+   "description": "Number of days for the operating rate weighted moving average. Minimum 30.",
+   "min": 30
+  },
+  {
+   "default": "30",
+   "fieldname": "operating_half_life_days",
+   "fieldtype": "Int",
+   "label": "Operating Rate Half-Life (days)",
+   "description": "Half-life in days for the exponential time-decay weighting. Lower = more weight on recent days."
+  },
+  {
+   "default": "365",
+   "fieldname": "capital_lookback_days",
+   "fieldtype": "Int",
+   "label": "Capital Rate Lookback (days)",
+   "description": "Fixed 365-day lookback for depreciation-based capital rate.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "operating_accounts",
+   "fieldtype": "Small Text",
+   "label": "Operating P&L Accounts",
+   "description": "Comma-separated P&L account numbers for operating expenses (e.g., 5200, 5300, 5400). Exclude depreciation and maintenance/repair accounts."
+  },
+  {
+   "fieldname": "depreciation_accounts",
+   "fieldtype": "Small Text",
+   "label": "Depreciation P&L Accounts",
+   "description": "Comma-separated P&L account numbers for depreciation (e.g., 5400). Used for capital rate calculation."
+  },
+  {
+   "default": "6",
+   "fieldname": "default_target_margin_pct",
+   "fieldtype": "Float",
+   "label": "Default Target Margin (%)",
+   "description": "Default margin percentage applied to selling price in the grower price formula."
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_sanity_checks",
+   "fieldtype": "Section Break",
+   "label": "Sanity Checks & Thresholds"
+  },
+  {
+   "default": "0.20",
+   "fieldname": "sanity_check_max_operating_rate",
+   "fieldtype": "Float",
+   "label": "Max Operating Rate (€/kg)",
+   "description": "Flag if operating rate exceeds this value. Indicates possible data error or low-volume period."
+  },
+  {
+   "default": "0.02",
+   "fieldname": "sanity_check_min_operating_rate",
+   "fieldtype": "Float",
+   "label": "Min Operating Rate (€/kg)",
+   "description": "Flag if operating rate falls below this value. Indicates missing GL data or misconfigured accounts."
+  },
+  {
+   "default": "30",
+   "fieldname": "rate_stability_threshold_pct",
+   "fieldtype": "Float",
+   "label": "Rate Stability Threshold (%)",
+   "description": "Max allowed month-over-month deviation before flagging for manual review. Set to 0 to disable."
+  },
+  {
+   "default": "5",
+   "fieldname": "reconciliation_variance_threshold_pct",
+   "fieldtype": "Float",
+   "label": "Reconciliation Variance Threshold (%)",
+   "description": "Max allowed variance between imputed (rate x kg) and actual P&L totals before flagging."
   },
   {
    "fieldname": "section_break_variables_help",

@@ -138,10 +138,13 @@ def remove_shipping_cost(delivery_note_name: str):
 
 
 def validate_batch_manufacture(delivery_note, method=None):
-    """Validate that all Potato batches being delivered have a completed Manufacture Stock Entry.
+    """Validate that all Potato batches being delivered have a completed Stock Entry.
 
-    This prevents the Purchase Receipt Gross Profit report from using an understated
-    incoming_rate that would miss BOM overhead costs incurred during manufacturing.
+    During dual-run transition, accepts BOTH 'Manufacture' (old workflow) AND
+    'Repack' (new workflow) Stock Entries. After Manufacturing is fully disabled,
+    this function is renamed to validate_batch_repacked (Repack SEs only).
+
+    See Issue #78 for the full transition plan.
     """
 
     # Collect unique batch numbers from Potato items
@@ -172,24 +175,25 @@ def validate_batch_manufacture(delivery_note, method=None):
     if not batches_to_check:
         return
 
-    # Query for submitted Manufacture Stock Entries that produced these batches
-    manufactured_batches = frappe.db.sql("""
+    # Query for submitted Manufacture OR Repack Stock Entries (dual-run)
+    processed_batches = frappe.db.sql("""
         SELECT DISTINCT sed.batch_no
         FROM `tabStock Entry Detail` sed
         INNER JOIN `tabStock Entry` se ON se.name = sed.parent
-        WHERE se.stock_entry_type = 'Manufacture'
+        WHERE se.stock_entry_type IN ('Manufacture', 'Repack')
           AND se.docstatus = 1
           AND sed.batch_no IN %(batch_nos)s
           AND sed.is_finished_item = 1
     """, {"batch_nos": tuple(batches_to_check)}, as_dict=True)
 
-    manufactured_batch_set = {row.batch_no for row in manufactured_batches}
+    processed_batch_set = {row.batch_no for row in processed_batches}
 
-    missing_batches = batches_to_check - manufactured_batch_set
+    missing_batches = batches_to_check - processed_batch_set
     if missing_batches:
         batch_list = ", ".join(sorted(missing_batches))
         frappe.throw(
-            "The following batches have not completed the Manufacture process "
-            "and cannot be delivered: {0}. Please ensure all batches have a "
-            "completed Manufacture Stock Entry before submitting this Delivery Note.".format(batch_list)
+            "The following batches have not been processed through a completed "
+            "Manufacture or Repack Stock Entry and cannot be delivered: {0}. "
+            "Please ensure all batches have a completed Stock Entry before "
+            "submitting this Delivery Note.".format(batch_list)
         )

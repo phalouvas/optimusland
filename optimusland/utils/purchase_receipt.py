@@ -5,7 +5,31 @@ from erpnext.manufacturing.doctype.work_order.work_order import get_item_details
 
 @frappe.whitelist()
 def create_production_plan(purchase_receipt, method=None):
+    """Create Production Plan from Purchase Receipt items (dual-run gate).
+
+    During the dual-run transition:
+    - Old item codes (PJ-, PB-, P- prefixed) → Production Plan created (legacy)
+    - New single-code items → skipped (use Repack workflow instead)
+
+    After all old WOs complete, this function is removed entirely.
+    See Issue #78 for the full transition plan.
+    """
     purchase_receipt = frappe.get_doc("Purchase Receipt", purchase_receipt.name)
+
+    # Dual-run gate: skip Production Plan for new single-code items
+    old_prefixes = ("PJ-", "PB-", "P-")
+    has_old_items = any(
+        item.item_code.startswith(old_prefixes) for item in purchase_receipt.items
+    )
+    if not has_old_items:
+        purchase_receipt.add_comment(
+            "Comment",
+            "All items use the new single-code scheme. "
+            "Production Plan creation skipped — use Repack Stock Entry instead. "
+            "This is expected behaviour per the new blended rate workflow.",
+        )
+        return
+
     batch_nos = []
     for item in purchase_receipt.items:
         batch_no = None
