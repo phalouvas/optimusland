@@ -21,7 +21,6 @@ import frappe
 from frappe.utils import flt, today, add_days, now_datetime, date_diff
 from math import exp, log as ln
 
-from optimusland.optimusland.doctype.blended_rate_snapshot.blended_rate_snapshot import BlendedRateSnapshot
 
 
 # ---------------------------------------------------------------------------
@@ -108,17 +107,39 @@ def get_capital_rate(company=None, lookback_days=None):
 
 
 def _get_config(company):
-    """Read blended rate configuration from Optimus General Settings."""
-    from erpnext.accounts.doctype.account.account import get_account_autoname
+    """Read blended rate configuration from Optimus General Settings.
 
+    Operating and depreciation accounts must be configured manually in
+    the settings (comma-separated account numbers).  No auto-detection —
+    manual setup ensures you know exactly which accounts are included.
+    """
     settings = frappe.get_single("Optimus General Settings")
+
+    operating_accounts = _parse_account_list(settings.operating_accounts)
+    depreciation_accounts = _parse_account_list(settings.depreciation_accounts)
+
+    if not operating_accounts:
+        frappe.msgprint(
+            "Operating P&L Accounts are not configured in Optimus General Settings. "
+            "The Operating Rate will be 0 until you add account numbers.",
+            title="Operating Accounts Missing",
+            indicator="orange",
+        )
+
+    if not depreciation_accounts:
+        frappe.msgprint(
+            "Depreciation P&L Accounts are not configured in Optimus General Settings. "
+            "The Capital Rate will be 0 until you add account numbers.",
+            title="Depreciation Accounts Missing",
+            indicator="orange",
+        )
 
     return frappe._dict(
         operating_lookback_days=max(settings.operating_lookback_days or 90, 30),
         operating_half_life_days=settings.operating_half_life_days or 30,
         capital_lookback_days=settings.capital_lookback_days or 365,
-        operating_accounts=_parse_account_list(settings.operating_accounts),
-        depreciation_accounts=_parse_account_list(settings.depreciation_accounts),
+        operating_accounts=operating_accounts,
+        depreciation_accounts=depreciation_accounts,
         default_target_margin_pct=settings.default_target_margin_pct or 6,
         sanity_check_max=settings.sanity_check_max_operating_rate or 0.20,
         sanity_check_min=settings.sanity_check_min_operating_rate or 0.02,
@@ -185,7 +206,7 @@ def _get_daily_gl_totals(company, account_numbers, from_date, to_date):
         f"""
         SELECT
             DATE(gl.posting_date) AS day,
-            SUM(gl.debit - gl.credit) AS total
+            GREATEST(SUM(gl.debit - gl.credit), 0) AS total
         FROM `tabGL Entry` gl
         INNER JOIN `tabAccount` acc ON acc.name = gl.account
         WHERE acc.company = %s
@@ -210,7 +231,7 @@ def _get_gl_sum(company, account_numbers, from_date, to_date):
     placeholders = ", ".join(["%s"] * len(account_numbers))
     row = frappe.db.sql(
         f"""
-        SELECT SUM(gl.debit - gl.credit) AS total
+        SELECT GREATEST(SUM(gl.debit - gl.credit), 0) AS total
         FROM `tabGL Entry` gl
         INNER JOIN `tabAccount` acc ON acc.name = gl.account
         WHERE acc.company = %s
@@ -260,6 +281,7 @@ def _get_total_kg_sold(company, lookback_days):
         WHERE si.docstatus = 1
           AND si.company = %s
           AND si.posting_date >= %s
+          AND sii.qty > 0
         """,
         [company, add_days(today(), -lookback_days)],
         as_dict=True,
@@ -277,14 +299,14 @@ def _build_daily_rates(daily_gl, daily_kg):
     for day in sorted(all_days):
         kg = daily_kg.get(day, 0)
         gl = daily_gl.get(day, 0)
-        if kg == 0 or kg is None:
-            continue  # Skip zero-kg days (design decision #8)
+        if kg <= 0:
+            continue  # Skip zero/negative kg days (credit notes, returns)
         rates.append(
             frappe._dict(
                 day=day,
                 gl_total=gl,
                 kg=kg,
-                rate=abs(gl) / kg,  # Use abs since GL entries can be negative (credit side)
+                rate=gl / kg,
             )
         )
     return rates
