@@ -137,14 +137,12 @@ def remove_shipping_cost(delivery_note_name: str):
     return True
 
 
-def validate_batch_manufacture(delivery_note, method=None):
-    """Validate that all Potato batches being delivered have a completed Stock Entry.
+def validate_batch_repacked(delivery_note, method=None):
+    """Validate that all Potato batches being delivered have a completed Repack Stock Entry.
 
-    During dual-run transition, accepts BOTH 'Manufacture' (old workflow) AND
-    'Repack' (new workflow) Stock Entries. After Manufacturing is fully disabled,
-    this function is renamed to validate_batch_repacked (Repack SEs only).
-
-    See Issue #78 for the full transition plan.
+    Replaces the old validate_batch_manufacture.  Manufacturing has been
+    disabled — all batches must now go through a Repack Stock Entry.
+    See Issue #78.
     """
 
     # Collect unique batch numbers from Potato items
@@ -152,7 +150,6 @@ def validate_batch_manufacture(delivery_note, method=None):
     for item in delivery_note.items:
         batch_no = item.batch_no
 
-        # Handle serial_and_batch_bundle pattern (v15+)
         if not batch_no and item.serial_and_batch_bundle:
             result = frappe.db.sql(
                 "SELECT batch_no FROM `tabSerial and Batch Entry` WHERE parent = %s",
@@ -165,7 +162,6 @@ def validate_batch_manufacture(delivery_note, method=None):
         if not batch_no:
             continue
 
-        # Only check Potato items (matches existing convention)
         item_group = frappe.db.get_value("Item", item.item_code, "item_group")
         if item_group != "Potatoes":
             continue
@@ -175,12 +171,11 @@ def validate_batch_manufacture(delivery_note, method=None):
     if not batches_to_check:
         return
 
-    # Query for submitted Manufacture OR Repack Stock Entries (dual-run)
     processed_batches = frappe.db.sql("""
         SELECT DISTINCT sed.batch_no
         FROM `tabStock Entry Detail` sed
         INNER JOIN `tabStock Entry` se ON se.name = sed.parent
-        WHERE se.stock_entry_type IN ('Manufacture', 'Repack')
+        WHERE se.stock_entry_type = 'Repack'
           AND se.docstatus = 1
           AND sed.batch_no IN %(batch_nos)s
           AND sed.is_finished_item = 1
@@ -193,7 +188,5 @@ def validate_batch_manufacture(delivery_note, method=None):
         batch_list = ", ".join(sorted(missing_batches))
         frappe.throw(
             "The following batches have not been processed through a completed "
-            "Manufacture or Repack Stock Entry and cannot be delivered: {0}. "
-            "Please ensure all batches have a completed Stock Entry before "
-            "submitting this Delivery Note.".format(batch_list)
+            "Repack Stock Entry and cannot be delivered: {0}. ".format(batch_list)
         )
