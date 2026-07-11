@@ -213,6 +213,171 @@ def get_weight_slip_unpaid_batches(supplier, weight_slip):
 
 
 @frappe.whitelist()
+def calculate_pi_prices(supplier, items, company=None):
+    """Calculate grower prices for items on a Draft Purchase Invoice.
+
+    Traces each item → PR item → batch → SI → selling price,
+    then applies the grower price formula.
+
+    Items are passed from the client (PI may not be saved yet).
+
+    Returns dict with items (per-item breakdown) and base_rate.
+    """
+    from optimusland.utils.blended_rate import get_base_rate
+
+    # Items arrive as JSON string from Frappe RPC
+    if isinstance(items, str):
+        items = frappe.parse_json(items)
+
+    if not company:
+        company = frappe.defaults.get_user_default("company")
+
+    cfg = _get_config()
+    margin_pct = flt(cfg.default_target_margin_pct) or 6
+    base_rate_data = get_base_rate(company)
+    op_rate = flt(base_rate_data.get("operating_rate", 0))
+    cap_rate = flt(base_rate_data.get("capital_rate", 0))
+
+    results = []
+    first_ws = None
+
+    for item in items:
+        # Trace item → PR item → batch
+        item_code = item.get("item_code")
+        item_qty = flt(item.get("qty"))
+
+        # batch_no may be directly on the PI item, or we trace via pr_detail
+        batch_no = item.get("batch_no")
+        if not batch_no:
+            pr_detail = item.get("pr_detail")
+            if pr_detail:
+                try:
+                    pr_item = frappe.get_doc("Purchase Receipt Item", pr_detail)
+                    batch_no = _get_batch_from_pr_item(pr_item)
+                except Exception:
+                    pass
+
+        if not batch_no:
+            continue
+
+        # Trace batch → SI to get selling price
+        si_info = frappe.db.sql("""
+            SELECT si.name, sii.qty, sii.net_rate, sii.item_code
+            FROM `tabSerial and Batch Entry` sbe
+            INNER JOIN `tabDelivery Note Item` dni ON dni.serial_and_batch_bundle = sbe.parent
+            INNER JOIN `tabSales Invoice Item` sii ON sii.delivery_note = dni.parent
+                AND sii.item_code = dni.item_code
+            INNER JOIN `tabSales Invoice` si ON si.name = sii.parent AND si.docstatus = 1
+            WHERE sbe.batch_no = %(batch_no)s
+            LIMIT 1
+        """, {"batch_no": batch_no}, as_dict=True)
+
+        selling_rate = si_info[0].net_rate if si_info else 0
+        si_name = si_info[0].name if si_info else None
+
+        # Get Weight Slip from batch
+        if not first_ws:
+            batch_doc = frappe.get_doc("Batch", batch_no)
+            first_ws = batch_doc.custom_weight_slip
+
+        margin_amount = selling_rate * (margin_pct / 100)
+        recommended_price = round(max(selling_rate - margin_amount - op_rate - cap_rate, 0), 6)
+
+        results.append(frappe._dict(
+            item_code=item_code,
+            item_name=item.get("item_name"),
+            batch_no=batch_no,
+            qty=item_qty,
+            purchase_rate=flt(item.get("rate")),
+            selling_rate=selling_rate,
+            sales_invoice=si_name,
+            operating_rate=op_rate,
+            capital_rate=cap_rate,
+            base_rate=op_rate + cap_rate,
+            margin_pct=margin_pct,
+            recommended_price=recommended_price,
+            total=round(recommended_price * item_qty, 2),
+        ))
+
+    return {
+        "items": results,
+        "margin_pct": margin_pct,
+        "weight_slip": first_ws,
+        "base_rate": {
+            "operating_rate": op_rate,
+            "capital_rate": cap_rate,
+            "base_rate": op_rate + cap_rate,
+        },
+    }
+
+
+def _get_batch_from_pr_item(pr_item):
+    """Extract batch number from a Purchase Receipt Item."""
+    if pr_item.batch_no:
+        return pr_item.batch_no
+    if pr_item.serial_and_batch_bundle:
+        rows = frappe.db.get_all(
+            "Serial and Batch Entry",
+            filters={"parent": pr_item.serial_and_batch_bundle},
+            fields=["batch_no"],
+            limit=1,
+        )
+        return rows[0].batch_no if rows else None
+    return None
+
+
+@frappe.whitelist()
+def update_pi_item_rates(purchase_invoice, item_updates, margin_pct=None):
+    """Update item rates on a Draft Purchase Invoice with confirmed grower prices.
+
+    Args:
+        purchase_invoice: PI name
+        item_updates: list of {idx, rate} — idx is 0-based item position
+        margin_pct: Margin used (for audit trail)
+    """
+    pi = frappe.get_doc("Purchase Invoice", purchase_invoice)
+    if pi.docstatus != 0:
+        frappe.throw("Only Draft Purchase Invoices can be updated.")
+
+    margin_pct = flt(margin_pct) or flt(_get_config().default_target_margin_pct)
+
+    # Parse item_updates — arrives as JSON string from Frappe RPC
+    if isinstance(item_updates, str):
+        item_updates = frappe.parse_json(item_updates)
+
+    # Update item rates
+    for update in item_updates:
+        idx = int(update.get("idx"))
+        rate = flt(update.get("rate"))
+        if idx < len(pi.items) and rate > 0:
+            pi.items[idx].rate = rate
+
+    # Get WS from first item's batch for audit trail
+    first_ws = None
+    if pi.items and pi.items[0].pr_detail:
+        pr_item = frappe.get_doc("Purchase Receipt Item", pi.items[0].pr_detail)
+        batch_no = _get_batch_from_pr_item(pr_item)
+        if batch_no:
+            batch_doc = frappe.get_doc("Batch", batch_no)
+            first_ws = batch_doc.custom_weight_slip
+    if first_ws:
+        pi.custom_weight_slip = first_ws
+
+    # Store calculation snapshot
+    pi.custom_grower_price_calculation = frappe.as_json({
+        "margin_pct": margin_pct,
+        "updated_at": str(now_datetime()),
+        "updated_by": frappe.session.user,
+    })
+
+    pi.save(ignore_permissions=True)
+
+    pi.add_comment("Info", f"Grower price calculated with {margin_pct}% margin. User-confirmed.")
+
+    return pi.name
+
+
+@frappe.whitelist()
 def create_purchase_invoice(supplier, weight_slip, line_items, margin_pct=None):
     """Create a Purchase Invoice for a grower with confirmed prices.
 
@@ -265,6 +430,7 @@ def create_purchase_invoice(supplier, weight_slip, line_items, margin_pct=None):
     # Store calculation as JSON for audit trail
     pi.custom_grower_price_calculation = frappe.as_json(
         {
+            "weight_slip": weight_slip,
             "line_items": line_items,
             "calculation": calc_data,
             "margin_pct": margin_pct,
@@ -279,7 +445,7 @@ def create_purchase_invoice(supplier, weight_slip, line_items, margin_pct=None):
     # Add a comment for audit trail
     pi.add_comment(
         "Info",
-        f"Grower price calculated with {margin_pct}% margin. "
+        f"Grower price calculated from {weight_slip} with {margin_pct}% margin. "
         f"User-verified and confirmed.",
     )
 
