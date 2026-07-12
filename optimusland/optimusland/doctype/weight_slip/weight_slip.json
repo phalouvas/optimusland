@@ -132,8 +132,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Pending\nCompleted\nCancelled",
-   "read_only": 1
+   "options": "Pending\nCompleted\nCancelled"
   }
  ],
  "grid_page_length": 50,
