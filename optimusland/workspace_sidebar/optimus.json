@@ -125,6 +125,30 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "file-text",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Supplier Profitability",
+   "link_to": "Supplier Profitability",
+   "link_type": "Report",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "icon": "file-text",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Customer Profitability",
+   "link_to": "Customer Profitability",
+   "link_type": "Report",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
    "icon": "buying",
    "indent": 0,
    "keep_closed": 0,
