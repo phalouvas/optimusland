@@ -71,26 +71,6 @@
  "doctype": "Supplier",
  "links": [
   {
-   "creation": "2024-02-26 09:19:31.492931",
-   "custom": 1,
-   "docstatus": 0,
-   "group": "Orders",
-   "hidden": 0,
-   "idx": 0,
-   "is_child_table": 0,
-   "link_doctype": "Work Order",
-   "link_fieldname": "custom_supplier",
-   "modified": "2026-07-11 19:30:54.924184",
-   "modified_by": "Administrator",
-   "name": "fd88992fcc",
-   "owner": "a.ioannou@optimuslandcy.com",
-   "parent": "Supplier",
-   "parent_doctype": null,
-   "parentfield": "links",
-   "parenttype": "Customize Form",
-   "table_fieldname": null
-  },
-  {
    "creation": "2026-07-11 19:30:54.928559",
    "custom": 1,
    "docstatus": 0,
@@ -176,7 +156,7 @@
    "property": "links_order",
    "property_type": "Small Text",
    "row_name": null,
-   "value": "[\"fd88992fcc\", \"p7c8bo5fpo\", \"nbl61igd7k\"]"
+   "value": "[\"p7c8bo5fpo\", \"nbl61igd7k\"]"
   },
   {
    "_assign": null,
