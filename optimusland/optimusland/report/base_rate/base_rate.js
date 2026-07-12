@@ -27,7 +27,7 @@ frappe.query_reports["Base Rate"] = {
 		},
 		{
 			fieldname: "supplier",
-			label: __("Grower (Supplier)"),
+			label: __("Supplier"),
 			fieldtype: "Link",
 			options: "Supplier",
 		},
@@ -51,11 +51,9 @@ frappe.query_reports["Base Rate"] = {
 	],
 	"formatter": function(value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
-		if (column.fieldname == "formula_price" && data && data.formula_price && data.actual_price) {
-			var diff = data.actual_price - data.formula_price;
-			if (Math.abs(diff) > 0.001) {
-				value = '<span style="color:orange">' + value + '</span>';
-			}
+		if (column.fieldname === "margin_achieved" && data && data.margin_achieved != null) {
+			var color = data.margin_achieved >= 0 ? "green" : "red";
+			value = "<span style='color:" + color + ";font-weight:bold'>" + value + "</span>";
 		}
 		return value;
 	}

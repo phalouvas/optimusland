@@ -25,19 +25,20 @@ def get_columns():
 			"width": 140,
 		},
 		{
-			"label": _("Posting Date"),
+			"label": _("Date"),
 			"fieldtype": "Date",
 			"fieldname": "posting_date",
 			"width": 90,
 		},
 		{
 			"label": _("Customer"),
-			"fieldtype": "Data",
+			"fieldtype": "Link",
 			"fieldname": "customer",
+			"options": "Customer",
 			"width": 120,
 		},
 		{
-			"label": _("Item Code"),
+			"label": _("Product"),
 			"fieldtype": "Link",
 			"fieldname": "item_code",
 			"options": "Item",
@@ -51,85 +52,60 @@ def get_columns():
 			"width": 160,
 		},
 		{
-			"label": _("Grower"),
-			"fieldtype": "Data",
-			"fieldname": "grower",
+			"label": _("Supplier"),
+			"fieldtype": "Link",
+			"fieldname": "supplier",
+			"options": "Supplier",
 			"width": 120,
 		},
 		{
 			"label": _("Weight Slip"),
-			"fieldtype": "Data",
+			"fieldtype": "Link",
 			"fieldname": "weight_slip",
+			"options": "Weight Slip",
 			"width": 110,
 		},
 		{
-			"label": _("Qty (kg)"),
+			"label": _("Kilos"),
 			"fieldtype": "Float",
 			"fieldname": "qty",
 			"precision": 1,
-			"width": 90,
+			"width": 80,
 		},
 		{
-			"label": _("Selling Rate"),
-			"fieldtype": "Currency",
+			"label": _("Sale Price (€/kg)"),
+			"fieldtype": "Float",
 			"fieldname": "selling_rate",
-			"options": "currency",
+			"precision": 3,
 			"width": 100,
 		},
 		{
-			"label": _("Selling Amount"),
-			"fieldtype": "Currency",
+			"label": _("Total Sale (€)"),
+			"fieldtype": "Float",
 			"fieldname": "selling_amount",
-			"options": "currency",
+			"precision": 2,
 			"width": 110,
 		},
 		{
-			"label": _("Operating Rate"),
-			"fieldtype": "Currency",
-			"fieldname": "operating_rate",
-			"options": "currency",
-			"precision": 4,
-			"width": 100,
-		},
-		{
-			"label": _("Capital Rate"),
-			"fieldtype": "Currency",
-			"fieldname": "capital_rate",
-			"options": "currency",
-			"precision": 4,
-			"width": 90,
-		},
-		{
-			"label": _("Base Rate"),
-			"fieldtype": "Currency",
-			"fieldname": "base_rate",
-			"options": "currency",
-			"precision": 4,
-			"width": 90,
-		},
-		{
-			"label": _("Formula Price (€/kg)"),
-			"fieldtype": "Currency",
+			"label": _("Suggested Supplier Price (€/kg)"),
+			"fieldtype": "Float",
 			"fieldname": "formula_price",
-			"options": "currency",
 			"precision": 4,
-			"width": 110,
+			"width": 120,
 		},
 		{
-			"label": _("Actual Paid (€/kg)"),
-			"fieldtype": "Currency",
+			"label": _("Paid to Supplier (€/kg)"),
+			"fieldtype": "Float",
 			"fieldname": "actual_price",
-			"options": "currency",
 			"precision": 4,
 			"width": 110,
 		},
 		{
-			"label": _("Variance (€/kg)"),
-			"fieldtype": "Currency",
-			"fieldname": "variance",
-			"options": "currency",
-			"precision": 4,
-			"width": 100,
+			"label": _("Margin %"),
+			"fieldtype": "Percent",
+			"fieldname": "margin_achieved",
+			"precision": 1,
+			"width": 80,
 		},
 		{
 			"label": _("Purchase Invoice"),
@@ -137,13 +113,6 @@ def get_columns():
 			"fieldname": "purchase_invoice",
 			"options": "Purchase Invoice",
 			"width": 140,
-		},
-		{
-			"label": _("Margin %"),
-			"fieldtype": "Percent",
-			"fieldname": "margin_pct",
-			"precision": 1,
-			"width": 80,
 		},
 	]
 
@@ -258,8 +227,13 @@ def get_data(filters):
 
 		actual_info = actual_map.get(batch, {})
 		actual = flt(actual_info.get("rate"))
-		variance = round(actual - formula, 4)
 		pi_name = actual_info.get("pi")
+
+		# Calculate actual margin % when PI exists (colored via JS formatter)
+		if actual > 0:
+			margin_achieved = round((selling - actual - base_rate) / selling * 100, 1) if selling > 0 else None
+		else:
+			margin_achieved = None
 
 		results.append({
 			"sales_invoice": s.sales_invoice,
@@ -267,19 +241,15 @@ def get_data(filters):
 			"customer": s.customer,
 			"item_code": s.item_code,
 			"batch_no": batch,
-			"grower": grower,
+			"supplier": grower,
 			"weight_slip": ws,
 			"qty": flt(s.qty),
 			"selling_rate": selling,
 			"selling_amount": flt(s.selling_amount),
-			"operating_rate": op_rate,
-			"capital_rate": cap_rate,
-			"base_rate": base_rate,
 			"formula_price": formula,
 			"actual_price": actual,
-			"variance": variance,
+			"margin_achieved": margin_achieved,
 			"purchase_invoice": pi_name,
-			"margin_pct": margin_pct,
 		})
 
 	return results

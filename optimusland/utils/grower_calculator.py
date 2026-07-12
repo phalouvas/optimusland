@@ -64,7 +64,7 @@ def calculate_grower_price(sales_invoice, margin_pct=None):
     results = []
     for item in si.items:
         item_group = frappe.db.get_value("Item", item.item_code, "item_group")
-        if item_group != "Potatoes":
+        if item_group != cfg.item_group:
             continue
 
         selling_rate = flt(item.net_rate)
