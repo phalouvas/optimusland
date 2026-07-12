@@ -29,6 +29,7 @@ from optimusland.utils.purchase_receipt import (
 	set_batch_no,
 	fix_stock_entry,
 	fix_missing_accounts,
+	update_weight_slip_status,
 )
 
 
@@ -717,3 +718,105 @@ class TestSetBatchNo(IntegrationTestCase):
 		# Assert weight slip link was set on the existing batch
 		batch = frappe.get_doc("Batch", existing_batch.name)
 		self.assertEqual(batch.custom_weight_slip, ws.name)
+
+
+class TestWeightSlipStatus(IntegrationTestCase):
+	"""Tests for update_weight_slip_status (Purchase Receipt on_submit/on_cancel hook)."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		cls.company = get_or_create_test_company()
+		cls.warehouse = get_or_create_test_warehouse(cls.company.name)
+		cls.supplier = get_or_create_test_supplier(cls.company.name)
+		cls.potato_item = get_or_create_test_potato_item(cls.company.name)
+		cls.packaging_item = get_or_create_test_packaging_item(cls.company.name)
+
+	def test_weight_slip_status_completed_on_pr_submit(self):
+		"""Submit PR with Weight Slip → WS status becomes Completed."""
+		ws = create_test_weight_slip(self.supplier.name, items_data=[
+			{"variety": "Spunta", "size": "50-70", "kilogram": "5000", "quantity": "100"},
+		])
+
+		self.assertEqual(ws.status, "Pending")
+
+		pr = frappe.get_doc({
+			"doctype": "Purchase Receipt",
+			"supplier": self.supplier.name,
+			"company": self.company.name,
+			"posting_date": frappe.utils.today(),
+			"set_posting_time": 1,
+			"custom_weight_slip": ws.name,
+			"items": [{
+				"item_code": self.potato_item.item_code,
+				"qty": 100,
+				"rate": 0.50,
+				"warehouse": self.warehouse.name,
+				"uom": self.potato_item.stock_uom,
+				"stock_uom": self.potato_item.stock_uom,
+				"conversion_factor": 1.0,
+			}],
+		})
+		pr.insert(ignore_permissions=True)
+		pr.submit()
+
+		ws.reload()
+		self.assertEqual(ws.status, "Completed")
+
+	def test_weight_slip_status_reverted_on_pr_cancel(self):
+		"""Cancel PR with Weight Slip → WS status reverts to Pending."""
+		ws = create_test_weight_slip(self.supplier.name, items_data=[
+			{"variety": "Spunta", "size": "50-70", "kilogram": "5000", "quantity": "100"},
+		])
+
+		pr = frappe.get_doc({
+			"doctype": "Purchase Receipt",
+			"supplier": self.supplier.name,
+			"company": self.company.name,
+			"posting_date": frappe.utils.today(),
+			"set_posting_time": 1,
+			"custom_weight_slip": ws.name,
+			"items": [{
+				"item_code": self.potato_item.item_code,
+				"qty": 100,
+				"rate": 0.50,
+				"warehouse": self.warehouse.name,
+				"uom": self.potato_item.stock_uom,
+				"stock_uom": self.potato_item.stock_uom,
+				"conversion_factor": 1.0,
+			}],
+		})
+		pr.insert(ignore_permissions=True)
+		pr.submit()
+
+		ws.reload()
+		self.assertEqual(ws.status, "Completed")
+
+		pr.cancel()
+
+		ws.reload()
+		self.assertEqual(ws.status, "Pending")
+
+	def test_weight_slip_no_status_change_without_ws(self):
+		"""PR without Weight Slip → no status change on Weight Slip."""
+		pr = frappe.get_doc({
+			"doctype": "Purchase Receipt",
+			"supplier": self.supplier.name,
+			"company": self.company.name,
+			"posting_date": frappe.utils.today(),
+			"set_posting_time": 1,
+			"items": [{
+				"item_code": self.potato_item.item_code,
+				"qty": 100,
+				"rate": 0.50,
+				"warehouse": self.warehouse.name,
+				"uom": self.potato_item.stock_uom,
+				"stock_uom": self.potato_item.stock_uom,
+				"conversion_factor": 1.0,
+			}],
+		})
+		pr.insert(ignore_permissions=True)
+		pr.submit()
+		pr.cancel()
+
+		# No Weight Slip was referenced — no error should occur (implicit pass)

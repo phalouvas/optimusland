@@ -364,3 +364,29 @@ def set_batch_no(purchase_receipt, method=None):
 
             # Assign the new batch to the item
             item.batch_no = new_batch.name
+
+
+def update_weight_slip_status(doc, method=None):
+    """Update Weight Slip status when Purchase Receipt is submitted or cancelled."""
+    if not doc.get("custom_weight_slip"):
+        return
+
+    ws_name = doc.custom_weight_slip
+
+    if method == "on_submit":
+        # Mark Weight Slip as Completed when PR is submitted
+        frappe.db.set_value("Weight Slip", ws_name, "status", "Completed")
+
+    elif method == "on_cancel":
+        # Revert to Pending — but only if no other submitted PR still references this WS
+        other_active = frappe.get_all(
+            "Purchase Receipt",
+            filters={
+                "custom_weight_slip": ws_name,
+                "docstatus": 1,
+                "name": ["!=", doc.name],
+            },
+            limit=1,
+        )
+        if not other_active:
+            frappe.db.set_value("Weight Slip", ws_name, "status", "Pending")

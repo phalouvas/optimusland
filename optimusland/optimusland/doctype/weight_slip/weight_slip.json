@@ -15,6 +15,7 @@
   "number_of_boxes",
   "harvest",
   "disabled",
+  "status",
   "section_break_jfal",
   "items",
   "section_break_cccn",
@@ -123,6 +124,16 @@
    "fieldname": "disabled",
    "fieldtype": "Check",
    "label": "Disabled"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nCompleted\nCancelled",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

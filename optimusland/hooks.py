@@ -145,6 +145,8 @@ after_migrate = "optimusland.utils.setup.after_migrate"
 doc_events = {
     "Purchase Receipt": {
         "validate": "optimusland.utils.purchase_receipt.set_batch_no",
+        "on_submit": "optimusland.utils.purchase_receipt.update_weight_slip_status",
+        "on_cancel": "optimusland.utils.purchase_receipt.update_weight_slip_status",
     },
 }
 
