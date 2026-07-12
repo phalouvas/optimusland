@@ -81,10 +81,10 @@ def get_columns():
 		},
 		{
 			"label": _("Total Sale (€)"),
-			"fieldtype": "Float",
+			"fieldtype": "Currency",
 			"fieldname": "selling_amount",
-			"precision": 2,
-			"width": 110,
+			"options": "currency",
+			"width": 120,
 		},
 		{
 			"label": _("Suggested Supplier Price (€/kg)"),
@@ -106,6 +106,13 @@ def get_columns():
 			"fieldname": "margin_achieved",
 			"precision": 1,
 			"width": 80,
+		},
+		{
+			"label": _("Profit (€)"),
+			"fieldtype": "Currency",
+			"fieldname": "profit_amount",
+			"options": "currency",
+			"width": 110,
 		},
 		{
 			"label": _("Purchase Invoice"),
@@ -229,11 +236,13 @@ def get_data(filters):
 		actual = flt(actual_info.get("rate"))
 		pi_name = actual_info.get("pi")
 
-		# Calculate actual margin % when PI exists (colored via JS formatter)
+		# Calculate actual margin % and profit when PI exists
 		if actual > 0:
 			margin_achieved = round((selling - actual - base_rate) / selling * 100, 1) if selling > 0 else None
+			profit_amount = round(flt(s.selling_amount) - (actual * flt(s.qty)) - (base_rate * flt(s.qty)), 2)
 		else:
 			margin_achieved = None
+			profit_amount = None
 
 		results.append({
 			"sales_invoice": s.sales_invoice,
@@ -249,8 +258,61 @@ def get_data(filters):
 			"formula_price": formula,
 			"actual_price": actual,
 			"margin_achieved": margin_achieved,
+			"profit_amount": profit_amount,
 			"purchase_invoice": pi_name,
 		})
+
+	return _add_totals_row(results)
+
+
+def _add_totals_row(results):
+	"""Append a manual summary row with weighted averages."""
+	if not results:
+		return results
+
+	total_qty = sum(r["qty"] for r in results)
+	total_revenue = sum(r["selling_amount"] for r in results)
+
+	if total_qty == 0:
+		return results
+
+	# Weighted averages
+	avg_selling = round(total_revenue / total_qty, 3)
+	avg_formula = round(
+		sum(r["formula_price"] * r["qty"] for r in results) / total_qty, 4
+	)
+
+	# Actual price: weighted avg over rows that have a PI
+	paid_results = [r for r in results if r["actual_price"] > 0]
+	if paid_results:
+		paid_qty = sum(r["qty"] for r in paid_results)
+		avg_actual = round(
+			sum(r["actual_price"] * r["qty"] for r in paid_results) / paid_qty, 4
+		)
+		avg_margin = round(
+			sum(r["margin_achieved"] * r["qty"] for r in paid_results) / paid_qty, 1
+		)
+	else:
+		avg_actual = 0
+		avg_margin = None
+
+	results.append({
+		"sales_invoice": "Total",
+		"posting_date": None,
+		"customer": "",
+		"item_code": "",
+		"batch_no": "",
+		"supplier": "",
+		"weight_slip": "",
+		"qty": round(total_qty, 1),
+		"selling_rate": avg_selling,
+		"selling_amount": round(total_revenue, 2),
+		"formula_price": avg_formula,
+		"actual_price": avg_actual,
+		"margin_achieved": avg_margin,
+		"profit_amount": round(sum(r["profit_amount"] for r in paid_results if r["profit_amount"] is not None), 2) if paid_results else None,
+		"purchase_invoice": "",
+	})
 
 	return results
 

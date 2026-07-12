@@ -51,8 +51,15 @@ frappe.query_reports["Base Rate"] = {
 	],
 	"formatter": function(value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
-		if (column.fieldname === "margin_achieved" && data && data.margin_achieved != null) {
+		if (data && data.sales_invoice === "Total") {
+			value = "<b>" + value + "</b>";
+		}
+		if (column.fieldname === "margin_achieved" && data && data.margin_achieved != null && data.sales_invoice !== "Total") {
 			var color = data.margin_achieved >= 0 ? "green" : "red";
+			value = "<span style='color:" + color + ";font-weight:bold'>" + value + "</span>";
+		}
+		if (column.fieldname === "profit_amount" && data && data.profit_amount != null && data.sales_invoice !== "Total") {
+			var color = data.profit_amount >= 0 ? "green" : "red";
 			value = "<span style='color:" + color + ";font-weight:bold'>" + value + "</span>";
 		}
 		return value;
