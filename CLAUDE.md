@@ -30,13 +30,6 @@ A **Manufacturing Pipeline** workspace provides full-cycle visibility across all
 8. **Sales Invoice**: Billed to customer. No custom hooks — `dn_required=Yes` blocks save if items lack Delivery Note links.
 9. **Purchase Invoice**: Farmer payment. Journal Entry `on_submit`/`on_cancel` hooks handle status (pipeline monitor covers unpaid/unlinked PIs).
 
-1. **Purchase Receipt**: Potatoes received from farmers. `on_submit` triggers `create_production_plan` (`optimusland/utils/purchase_receipt.py`).
-2. **Production Plan**: Auto-created with items from the PR; each item's BOM fetched dynamically via `get_item_details()`.
-3. **Work Orders**: Created from the Production Plan and submitted automatically.
-4. **Stock Entries**: Two per Work Order — Material Transfer for Manufacture (raw materials consumed) then Manufacture (finished goods produced, with batch assignment and purchase rate).
-5. **Delivery Note**: Packaged goods shipped to customers. Shipping cost can be added post-submit.
-6. **Sales Invoice**: Billed to customer. `before_save` warns if "Potatoes" items lack a Delivery Note link (soft warning, does not block save).
-
 ### Why Raw Potato is NOT in the BOM
 
 The farmer's purchase price is negotiated **after** the final sale to the customer. If potato were in the Bill of Materials, its cost would lock at Work Order creation time — before the farmer has even been invoiced. This is intentional and correct.
@@ -165,7 +158,6 @@ Injected into standard ERPNext DocType forms via **`doctype_js`** in hooks (form
 ### Custom DocTypes
 
 - **WeightSlip** + **WeightSlipItem**: Real DocTypes with DB tables.
-- **DeliveryNoteBillingWizard**: Virtual DocType — stores data as JSON in Long Text fields using `@property` getters/setters. No DB table.
 
 ### Manufacturing Pipeline Dashboard
 
@@ -218,3 +210,72 @@ Other fixture files exist (Delivery Note Item, Packed Item, Sales Invoice Item, 
 - SI→DN linking is enforced at ERPNext core level via Selling Settings `dn_required=Yes`, no custom validation needed
 - Net Position section (`party.py`/`supplier.js`/`customer.js`) uses GL balances via ERPNext's ``get_balance_on()`` — formula: ``pi_gl = -supplier_gl``, ``si_gl = customer_gl``, ``net = pi_gl − si_gl``
 - "Create Netting Journal Entry" button only activates when both ``pi_gl > 0`` and ``si_gl > 0`` — refuses if either side is in credit. Not compatible with Common Party Accounting (disable it).
+
+## Developer Guide
+
+### Development Environment
+
+#### Prerequisites
+- **Frappe Bench** with Frappe v15/v16 installed
+- **Python 3.10+** (specified in `pyproject.toml`)
+- **Node.js** (for frontend assets)
+- **Docker** (for deployment)
+
+#### Setup
+1. Clone the repository into your bench apps directory: `cd ~/frappe-bench/apps && git clone <repo>`
+2. Install the app: `bench --site [site-name] install-app optimusland`
+3. For development mode: `bench setup requirements --dev`
+
+**Note**: The workspace is currently at `/workspace/development/v16/apps/optimusland` (v16) but deployment targets Frappe v15 — ensure compatibility when making changes.
+
+#### Building Frontend Assets
+- Build app assets: `bench build --app optimusland`
+- JS changes in `optimusland/public/js/` require a build to take effect
+- Custom DocType JS/JSON changes require `bench --site [site-name] export-fixtures --app optimusland`
+
+#### Docker Deployment (Production)
+Refer to **[deploy/README.md](deploy/README.md)** for detailed setup:
+- Multi-step process using `frappe_docker` fork
+- Custom compose overrides (`compose.multi-bench-kainotomo.yaml`)
+- Image build with version tagging (`phalouvas/optimusland-worker:15.24.1`)
+- Deploy script: `deploy/deploy.sh`
+
+### Potential Pitfalls
+
+1. **Version Mismatch**: Workspace is v16 but deployment targets Frappe v15. Ensure changes are compatible with both versions. Test on the appropriate bench environment.
+2. **Virtual DocType Limitations**: No automatic DB persistence. Must manually manage JSON serialization in properties.
+3. **Scheduled Tasks**: `tasks.py` has daily background jobs commented out — re-enable carefully as they modify invoice status globally.
+4. **No Linting/Type Checking**: No mypy, flake8, or linting in pipeline. Code quality relies on manual review. Consider adding type hints for new code.
+5. **Docker Deployment Complexity**: Multi-step process with custom overrides. Ensure environment files are updated before deployment. Image build must be done on local machine, not production server.
+
+### Common Tasks
+
+#### Adding a New Custom Field
+1. Create/edit JSON file in `optimusland/optimusland/custom/`
+2. Follow existing pattern: `{"dt": "DocType", "custom_fields": [...]}`
+3. Prefix field name with `custom_`
+4. Test field appears in DocType form
+
+#### Creating a New Utility Function
+1. Add to existing module in `optimusland/utils/` or create a new one
+2. Use `@frappe.whitelist()` decorator
+3. Document with a docstring
+4. Add client-side call in the appropriate JS file if needed
+
+#### Writing a Test
+1. Extend `IntegrationTestCase` (not the deprecated `FrappeTestCase`)
+2. Place tests in the relevant `doctype/` or `report/` directory
+3. Run with `bench run-tests --app optimusland --module <module-path>`
+
+#### Updating a Report
+1. Use SQL queries with customer validation
+2. Include data integrity validation (variance detection)
+3. Test with edge cases (zero invoices, closed delivery notes)
+
+### Key Files as Reference Patterns
+
+| File | Purpose | Pattern |
+|------|---------|---------|
+| `optimusland/optimusland/report/unbilled_delivery_notes/unbilled_delivery_notes.py` | SQL report with subqueries | JOIN pattern linking via `delivery_note`/`dn_detail` fields |
+| `optimusland/optimusland/utils/batch.py` | Utility callable from UI | `@frappe.whitelist()` + `frappe.new_doc()` for bulk operations |
+| `optimusland/optimusland/custom/delivery_note.json` | Field customization | JSON structure with `custom_fields` array, `dt` = DocType name |

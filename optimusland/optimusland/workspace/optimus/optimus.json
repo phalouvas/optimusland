@@ -86,7 +86,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 4,
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -120,19 +120,9 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Delivery Note Billing Wizard",
-   "link_count": 0,
-   "link_to": "Delivery Note Billing Wizard",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
   }
  ],
- "modified": "2026-07-12 15:14:19.582341",
+ "modified": "2026-07-12 15:30:09.556928",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Optimus",
