@@ -47,7 +47,7 @@ def calculate_grower_price(sales_invoice, margin_pct=None):
         frappe.throw(f"Sales Invoice {sales_invoice} is cancelled.")
 
     cfg = _get_config()
-    margin_pct = flt(margin_pct) if margin_pct is not None else flt(cfg.default_target_margin_pct)
+    margin_pct = flt(margin_pct) or flt(cfg.default_target_margin_pct)
     base_rate_data = get_base_rate(si.company)
     op_rate = flt(base_rate_data.get("operating_rate", 0))
     cap_rate = flt(base_rate_data.get("capital_rate", 0))

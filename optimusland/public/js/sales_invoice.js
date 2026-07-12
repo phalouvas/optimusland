@@ -129,8 +129,7 @@ function _preview_grower_price(frm) {
     frappe.call({
         method: 'optimusland.utils.grower_calculator.preview_grower_price',
         args: {
-            sales_invoice: frm.doc.name,
-            margin_pct: null  // uses default from settings
+            sales_invoice: frm.doc.name
         },
         callback: function(r) {
             if (!r.message || !r.message.items || r.message.items.length === 0) {
