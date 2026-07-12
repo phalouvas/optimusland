@@ -141,6 +141,8 @@ def _get_config(company):
         operating_accounts=operating_accounts,
         depreciation_accounts=depreciation_accounts,
         default_target_margin_pct=settings.default_target_margin_pct or 6,
+        item_group=settings.item_group or "Potatoes",
+        uom=settings.uom or "Kg",
         sanity_check_max=settings.sanity_check_max_operating_rate or 0.20,
         sanity_check_min=settings.sanity_check_min_operating_rate or 0.02,
         stability_threshold=settings.rate_stability_threshold_pct or 30,
@@ -163,7 +165,7 @@ def _get_operating_rate(company, cfg):
 
     from_date = add_days(today(), -cfg.operating_lookback_days)
     daily_gl = _get_daily_gl_totals(company, cfg.operating_accounts, from_date, today())
-    daily_kg = _get_daily_kg(company, from_date, today())
+    daily_kg = _get_daily_kg(company, from_date, today(), cfg)
 
     # Merge GL and kg data into daily rates
     daily_rates = _build_daily_rates(daily_gl, daily_kg)
@@ -185,7 +187,7 @@ def _get_capital_rate(company, cfg):
 
     from_date = add_days(today(), -cfg.capital_lookback_days)
     total_depreciation = _get_gl_sum(company, cfg.depreciation_accounts, from_date, today())
-    total_kg = _get_total_kg_sold(company, cfg.capital_lookback_days)
+    total_kg = _get_total_kg_sold(company, cfg.capital_lookback_days, cfg)
 
     if not total_kg or total_kg == 0:
         return 0.0
@@ -246,11 +248,14 @@ def _get_gl_sum(company, account_numbers, from_date, to_date):
     return flt(row[0].total) if row else 0.0
 
 
-def _get_daily_kg(company, from_date, to_date):
-    """Get total kg sold per day from submitted Sales Invoices.
+def _get_daily_kg(company, from_date, to_date, cfg=None):
+    """Get total kg sold per day from submitted Sales Invoices,
+    filtered by configured Item Group and UOM.
 
     Returns dict { 'YYYY-MM-DD': total_qty }.
     """
+    if not cfg:
+        cfg = _get_config(company)
     rows = frappe.db.sql(
         """
         SELECT
@@ -258,32 +263,41 @@ def _get_daily_kg(company, from_date, to_date):
             SUM(sii.qty) AS total_qty
         FROM `tabSales Invoice Item` sii
         INNER JOIN `tabSales Invoice` si ON si.name = sii.parent
+        INNER JOIN `tabItem` item ON item.name = sii.item_code
         WHERE si.docstatus = 1
           AND si.company = %s
           AND si.posting_date BETWEEN %s AND %s
+          AND item.item_group = %s
+          AND sii.uom = %s
         GROUP BY DATE(si.posting_date)
         ORDER BY day
         """,
-        [company, from_date, to_date],
+        values=[company, from_date, to_date, cfg.item_group, cfg.uom],
         as_dict=True,
     )
 
     return {row.day: row.total_qty for row in rows}
 
 
-def _get_total_kg_sold(company, lookback_days):
-    """Get total kg from all submitted SIs in the lookback period."""
+def _get_total_kg_sold(company, lookback_days, cfg=None):
+    """Get total kg from all submitted SIs in the lookback period,
+    filtered by configured Item Group and UOM."""
+    if not cfg:
+        cfg = _get_config(company)
     row = frappe.db.sql(
         """
         SELECT SUM(sii.qty) AS total
         FROM `tabSales Invoice Item` sii
         INNER JOIN `tabSales Invoice` si ON si.name = sii.parent
+        INNER JOIN `tabItem` item ON item.name = sii.item_code
         WHERE si.docstatus = 1
           AND si.company = %s
           AND si.posting_date >= %s
+          AND item.item_group = %s
+          AND sii.uom = %s
           AND sii.qty > 0
         """,
-        [company, add_days(today(), -lookback_days)],
+        values=[company, add_days(today(), -lookback_days), cfg.item_group, cfg.uom],
         as_dict=True,
     )
     return flt(row[0].total) if row else 0.0
@@ -371,6 +385,24 @@ def _run_sanity_checks(result, cfg):
                     f"Operating rate changed {change_pct:.1f}% month-over-month "
                     f"(threshold: {cfg.stability_threshold}%). Flagged for review."
                 )
+
+    # Reconciliation check: imputed total vs actual GL over the operating lookback period.
+    # Uses only the operating rate (not capital) since the lookback windows differ.
+    if cfg.reconciliation_threshold and result.get("operating_rate", 0) > 0:
+        company = result.get("company")
+        from_date = add_days(today(), -cfg.operating_lookback_days)
+        lookback_kg = _get_total_kg_sold(company, cfg.operating_lookback_days, cfg)
+        if cfg.operating_accounts and lookback_kg > 0:
+            actual_gl = _get_gl_sum(company, cfg.operating_accounts, from_date, today())
+            imputed = result["operating_rate"] * lookback_kg
+            if actual_gl > 0:
+                variance_pct = abs(imputed - actual_gl) / actual_gl * 100
+                if variance_pct > cfg.reconciliation_threshold:
+                    warnings.append(
+                        f"Reconciliation variance: imputed ({imputed:.2f}€) vs actual GL "
+                        f"({actual_gl:.2f}€) differs by {variance_pct:.1f}% "
+                        f"(threshold: {cfg.reconciliation_threshold}%). Review account configuration."
+                    )
 
     return warnings
 

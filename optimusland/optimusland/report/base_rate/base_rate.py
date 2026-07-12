@@ -152,9 +152,14 @@ def get_data(filters):
 	"""Get all SIs with Potato items within the date range,
 	calculate formula price, and show actual paid price from PI."""
 
+	# Read item_group and uom from settings (with defaults)
+	settings = frappe.get_single("Optimus General Settings")
+	item_group = settings.item_group or "Potatoes"
+	uom = settings.uom or "Kg"
+
 	conditions = _build_conditions(filters)
 
-	# Get SIs with Potato items
+	# Get SIs with filtered items
 	sis = frappe.db.sql(
 		f"""
 		SELECT
@@ -169,15 +174,18 @@ def get_data(filters):
 			sbe.batch_no
 		FROM `tabSales Invoice` si
 		INNER JOIN `tabSales Invoice Item` sii ON sii.parent = si.name
+		INNER JOIN `tabItem` item ON item.name = sii.item_code
 		LEFT JOIN `tabDelivery Note Item` dni ON dni.name = sii.dn_detail
 		LEFT JOIN `tabSerial and Batch Entry` sbe ON sbe.parent = dni.serial_and_batch_bundle
 		WHERE si.docstatus = 1
 			AND si.company = %(company)s
 			AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+			AND item.item_group = %(item_group)s
+			AND sii.uom = %(uom)s
 			{conditions}
 		ORDER BY si.posting_date DESC, si.name
 		""",
-		filters,
+		{**filters, "item_group": item_group, "uom": uom},
 		as_dict=True,
 	)
 

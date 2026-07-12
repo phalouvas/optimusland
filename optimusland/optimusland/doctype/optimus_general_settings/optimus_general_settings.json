@@ -20,6 +20,8 @@
   "operating_accounts",
   "depreciation_accounts",
   "default_target_margin_pct",
+  "item_group",
+  "uom",
   "section_break_sanity_checks",
   "sanity_check_max_operating_rate",
   "sanity_check_min_operating_rate",
@@ -124,6 +126,22 @@
    "fieldtype": "Float",
    "label": "Default Target Margin (%)",
    "description": "Default margin percentage applied to selling price in the grower price formula."
+  },
+  {
+   "default": "Potatoes",
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group",
+   "description": "Only items in this group are included in the kg denominator for base rate calculation."
+  },
+  {
+   "default": "Kg",
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "description": "Only items with this UOM are included in the kg denominator for base rate calculation."
   },
   {
    "collapsible": 1,
