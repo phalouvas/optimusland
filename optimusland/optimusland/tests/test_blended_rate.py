@@ -24,17 +24,58 @@ class TestBaseRateCalculation(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
-		# Use existing company with SI data for kg denominator
-		cls.company_name = frappe.db.get_value("Company", {}, "name")
-		if not cls.company_name:
-			cls.skipTest(cls, "No company found in test DB")
+		from optimusland.optimusland.tests import (
+			get_or_create_test_company, get_or_create_test_warehouse,
+			get_or_create_test_supplier, get_or_create_test_customer,
+			get_or_create_test_potato_item, setup_item_valuation,
+			create_test_purchase_receipt, create_test_delivery_note,
+			create_test_sales_invoice,
+		)
 
-		# Create expense account under a group account of the existing company
+		cls.company_name = get_or_create_test_company().name
+		cls.warehouse = get_or_create_test_warehouse(cls.company_name).name
+		supplier = get_or_create_test_supplier(cls.company_name).name
+		customer = get_or_create_test_customer(cls.company_name).name
+		potato = get_or_create_test_potato_item(cls.company_name)
+		cls.potato_item = potato.item_code
+
+		# Ensure Potato item has stock
+		setup_item_valuation(cls.potato_item, 0.50, cls.company_name)
+
+		# Create the full chain: PR -> DN -> SI (v16 requires DN before SI)
+		posting_date = frappe.utils.add_days(frappe.utils.today(), -10)
+		pr = create_test_purchase_receipt(
+			items_data=[{"item_code": cls.potato_item, "qty": 1000, "rate": 0.50}],
+			supplier=supplier, company=cls.company_name,
+			warehouse=cls.warehouse, posting_date=posting_date,
+		)
+
+		# Get the batch auto-assigned by set_batch_no hook
+		batch_no = frappe.db.get_value("Purchase Receipt Item",
+			{"parent": pr.name}, "batch_no")
+
+		dn = create_test_delivery_note(
+			items_data=[{"item_code": cls.potato_item, "qty": 1000, "rate": 0.70,
+						"batch_no": batch_no}],
+			customer=customer, company=cls.company_name,
+			warehouse=cls.warehouse, posting_date=posting_date,
+		)
+
+		# Get dn_detail for SI link
+		dn_item = frappe.db.get_value("Delivery Note Item",
+			{"parent": dn.name, "item_code": cls.potato_item}, "name")
+
+		create_test_sales_invoice(
+			items_data=[{"item_code": cls.potato_item, "qty": 1000, "rate": 0.70,
+						"delivery_note": dn.name, "dn_detail": dn_item}],
+			customer=customer, company=cls.company_name,
+			warehouse=cls.warehouse, posting_date=posting_date,
+		)
+
+		# Create expense account
 		parent_expense = frappe.db.get_value("Account", {
 			"root_type": "Expense", "company": cls.company_name, "is_group": 1
 		}, "name")
-		if not parent_expense:
-			cls.skipTest(cls, "No expense group account found")
 		cls.expense_account = frappe.get_doc({
 			"doctype": "Account", "account_name": "_Test BR OpExp", "account_number": "9999",
 			"parent_account": parent_expense,
@@ -42,21 +83,18 @@ class TestBaseRateCalculation(IntegrationTestCase):
 		})
 		cls.expense_account.insert(ignore_permissions=True)
 
-		# Configure settings for the existing company
+		# Configure settings and create GL entries
 		cls._configure_settings()
 		cls._create_gl_entries()
 
 	@classmethod
 	def _configure_settings(cls):
-		"""Setup test configuration using db_set_value to avoid mandatory child table validation."""
 		frappe.db.set_single_value("Optimus General Settings", {
 			"operating_accounts": "9999",
 			"depreciation_accounts": "",
 			"operating_lookback_days": 90,
 			"operating_half_life_days": 30,
 			"default_target_margin_pct": 6,
-			"item_group": "",
-			"uom": "",
 			"sanity_check_max_operating_rate": 0.50,
 			"sanity_check_min_operating_rate": 0.01,
 			"rate_stability_threshold_pct": 30,
