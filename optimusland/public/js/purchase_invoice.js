@@ -9,8 +9,8 @@ frappe.ui.form.on("Purchase Invoice", {
             if (page) page.classList.remove("bg-warning");
         }
 
-        // "Calculate Grower Price" on Draft PIs with items
-        if (frm.doc.docstatus === 0 && frm.doc.supplier && frm.doc.items && frm.doc.items.length > 0
+        // "Calculate Grower Price" only on saved Draft PIs (not before first save)
+        if (!frm.doc.__islocal && frm.doc.docstatus === 0 && frm.doc.supplier && frm.doc.items && frm.doc.items.length > 0
             && frm.doc.items.some(function(i) { return parseFloat(i.qty) > 0; })) {
             frm.add_custom_button(__('Calculate Grower Price'), function() {
                 _show_calculator(frm);
