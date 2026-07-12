@@ -11,8 +11,6 @@
   "payment_reminders_sms",
   "section_break_templates",
   "templates",
-  "section_break_pipeline",
-  "pipeline_alert_recipients",
   "section_break_blended_rate",
   "operating_lookback_days",
   "operating_half_life_days",
@@ -67,17 +65,6 @@
    "label": "Message Templates",
    "options": "Payment Reminder Template",
    "reqd": 1
-  },
-  {
-   "fieldname": "section_break_pipeline",
-   "fieldtype": "Section Break",
-   "label": "Pipeline Alerts"
-  },
-  {
-   "fieldname": "pipeline_alert_recipients",
-   "fieldtype": "Small Text",
-   "label": "Pipeline Alert Recipients",
-   "description": "Comma-separated email addresses for alert notifications."
   },
   {
    "collapsible": 1,
@@ -153,14 +140,14 @@
    "default": "0.20",
    "fieldname": "sanity_check_max_operating_rate",
    "fieldtype": "Float",
-   "label": "Max Operating Rate (€/kg)",
+   "label": "Max Operating Rate (\u20ac/kg)",
    "description": "Flag if operating rate exceeds this value. Indicates possible data error or low-volume period."
   },
   {
    "default": "0.02",
    "fieldname": "sanity_check_min_operating_rate",
    "fieldtype": "Float",
-   "label": "Min Operating Rate (€/kg)",
+   "label": "Min Operating Rate (\u20ac/kg)",
    "description": "Flag if operating rate falls below this value. Indicates missing GL data or misconfigured accounts."
   },
   {
@@ -185,7 +172,7 @@
   {
    "fieldname": "html_help",
    "fieldtype": "HTML",
-   "options": "<p>The following variables can be used in Subject and Message templates. They will be replaced with actual values when the reminder is sent.</p>\n<ul>\n<li><code>{{ invoice_name }}</code> — Sales Invoice number</li>\n<li><code>{{ customer_name }}</code> — Customer name</li>\n<li><code>{{ due_date }}</code> — Invoice due date</li>\n<li><code>{{ posting_date }}</code> — Invoice posting date</li>\n<li><code>{{ total }}</code> — Invoice total amount</li>\n<li><code>{{ outstanding_amount }}</code> — Outstanding balance</li>\n<li><code>{{ days_overdue }}</code> — Number of days past due</li>\n<li><code>{{ reminder_level }}</code> — Reminder level (1-4)</li>\n<li><code>{{ company }}</code> — Company name</li>\n</ul>"
+   "options": "<p>The following variables can be used in Subject and Message templates. They will be replaced with actual values when the reminder is sent.</p>\n<ul>\n<li><code>{{ invoice_name }}</code> \u2014 Sales Invoice number</li>\n<li><code>{{ customer_name }}</code> \u2014 Customer name</li>\n<li><code>{{ due_date }}</code> \u2014 Invoice due date</li>\n<li><code>{{ posting_date }}</code> \u2014 Invoice posting date</li>\n<li><code>{{ total }}</code> \u2014 Invoice total amount</li>\n<li><code>{{ outstanding_amount }}</code> \u2014 Outstanding balance</li>\n<li><code>{{ days_overdue }}</code> \u2014 Number of days past due</li>\n<li><code>{{ reminder_level }}</code> \u2014 Reminder level (1-4)</li>\n<li><code>{{ company }}</code> \u2014 Company name</li>\n</ul>"
   }
  ],
  "grid_page_length": 50,

@@ -220,42 +220,33 @@ def get_or_create_test_packaging_item(company=None):
 # Bill of Materials
 # ---------------------------------------------------------------------------
 
+
 def get_or_create_test_bom(item_code, company=None):
 	"""Create a BOM for the given item with packaging as a component.
 
 	Only creates if no BOM exists for this item.
+	Returns existing BOM if found.
 	"""
 	if not company:
-		company = get_or_create_test_company().name
+		company = frappe.defaults.get_user_default("company")
+	packaging_item = frappe.db.get_value("Item", {"item_group": "Packaging"}, "name")
+	if not packaging_item:
+		packaging_item = get_or_create_test_packaging_item(company)
 
 	existing_bom = frappe.db.get_value("BOM", {"item": item_code, "is_active": 1, "docstatus": 1})
 	if existing_bom:
 		return frappe.get_doc("BOM", existing_bom)
 
-	packaging_item = get_or_create_test_packaging_item(company)
-	company_abbr = frappe.db.get_value("Company", company, "abbr")
-
 	bom = frappe.get_doc({
 		"doctype": "BOM",
 		"item": item_code,
-		"quantity": 1.0,
+		"quantity": 1,
 		"company": company,
-		"is_active": 1,
-		"is_default": 1,
-		"currency": frappe.db.get_value("Company", company, "default_currency") or "EUR",
-		"items": [
-			{
-				"item_code": packaging_item.item_code,
-				"qty": 1.0,
-				"rate": 0.50,
-				"amount": 0.50,
-				"stock_uom": packaging_item.stock_uom,
-				"uom": packaging_item.stock_uom,
-				"conversion_factor": 1.0,
-				"company": company,
-				"warehouse": f"Stores - {company_abbr}",
-			}
-		],
+		"items": [{
+			"item_code": packaging_item,
+			"qty": 1,
+			"rate": 0,
+		}],
 	})
 	bom.insert(ignore_permissions=True)
 	bom.submit()
@@ -266,9 +257,6 @@ def get_or_create_test_bom(item_code, company=None):
 	return bom
 
 
-# ---------------------------------------------------------------------------
-# Batch
-# ---------------------------------------------------------------------------
 
 def create_test_batch(item_code, supplier, prefix=None, manufacturing_date=None):
 	"""Create a Batch with custom_supplier_optimus set.
@@ -496,87 +484,6 @@ def create_test_sales_invoice(items_data, customer=None, company=None, warehouse
 # Stock Entry (Manufacture)
 # ---------------------------------------------------------------------------
 
-def create_test_manufacture_stock_entry(item_code, batch_no, qty, company=None, warehouse=None):
-	"""Create a submitted Manufacture Stock Entry for a given batch.
-
-	Creates both a raw material item (consumed from warehouse) and a
-	finished item (produced into warehouse) to satisfy ERPNext validation.
-
-	Looks up accounts dynamically from the company defaults to avoid
-	hardcoded account name assumptions.
-	"""
-	if not company:
-		company = get_or_create_test_company().name
-	if not warehouse:
-		warehouse = get_or_create_test_warehouse(company).name
-
-	company_doc = frappe.get_cached_doc("Company", company)
-	expense_account = company_doc.stock_adjustment_account
-	cost_center = company_doc.cost_center
-	abbr = company_doc.abbr
-
-	if not expense_account:
-		expense_account = frappe.db.get_value(
-			"Account",
-			{"company": company, "account_type": "Stock Adjustment", "is_group": 0},
-		)
-	if not expense_account:
-		if not frappe.db.exists("Account", f"Stock Adjustment - {abbr}"):
-			parent = frappe.db.get_value("Account", {"company": company, "is_group": 1},
-										 order_by="lft")
-			exp = frappe.get_doc({
-				"doctype": "Account",
-				"account_name": "Stock Adjustment",
-				"company": company,
-				"parent_account": parent,
-				"account_type": "Stock Adjustment",
-			})
-			exp.insert(ignore_permissions=True)
-		expense_account = f"Stock Adjustment - {abbr}"
-
-	if not cost_center:
-		cost_center = frappe.db.get_value("Cost Center",
-										  {"company": company, "is_group": 0}, "name")
-
-	se = frappe.get_doc({
-		"doctype": "Stock Entry",
-		"stock_entry_type": "Manufacture",
-		"company": company,
-		"set_posting_time": 1,
-		"posting_date": frappe.utils.today(),
-		"items": [
-			{
-				"item_code": item_code,
-				"qty": qty,
-				"s_warehouse": warehouse,
-				"batch_no": batch_no,
-				"use_serial_batch_fields": 1,
-				"is_finished_item": 0,
-				"basic_rate": 0,
-				"expense_account": expense_account,
-				"cost_center": cost_center,
-			},
-			{
-				"item_code": item_code,
-				"qty": qty,
-				"t_warehouse": warehouse,
-				"batch_no": batch_no,
-				"use_serial_batch_fields": 1,
-				"is_finished_item": 1,
-				"basic_rate": 0,
-				"expense_account": expense_account,
-				"cost_center": cost_center,
-			},
-		],
-	})
-	se.insert(ignore_permissions=True)
-	se.submit()
-	return se
-
-
-# ---------------------------------------------------------------------------
-# Stock Setup Helpers
-# ---------------------------------------------------------------------------
 
 def setup_item_valuation(item_code, valuation_rate, company=None):
 	"""Set valuation rate on an item and create an opening stock entry if needed.
