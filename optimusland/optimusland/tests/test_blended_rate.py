@@ -48,20 +48,20 @@ class TestBaseRateCalculation(IntegrationTestCase):
 
 	@classmethod
 	def _configure_settings(cls):
-		"""Setup test configuration."""
-		settings = frappe.get_single("Optimus General Settings")
-		settings.operating_accounts = "9999"
-		settings.depreciation_accounts = ""
-		settings.operating_lookback_days = 90
-		settings.operating_half_life_days = 30
-		settings.default_target_margin_pct = 6
-		settings.item_group = "Potatoes"
-		settings.uom = "Kg"
-		settings.sanity_check_max_operating_rate = 0.50
-		settings.sanity_check_min_operating_rate = 0.01
-		settings.rate_stability_threshold_pct = 30
-		settings.reconciliation_variance_threshold_pct = 5
-		settings.save(ignore_permissions=True)
+		"""Setup test configuration using db_set_value to avoid mandatory child table validation."""
+		frappe.db.set_single_value("Optimus General Settings", {
+			"operating_accounts": "9999",
+			"depreciation_accounts": "",
+			"operating_lookback_days": 90,
+			"operating_half_life_days": 30,
+			"default_target_margin_pct": 6,
+			"item_group": "",
+			"uom": "",
+			"sanity_check_max_operating_rate": 0.50,
+			"sanity_check_min_operating_rate": 0.01,
+			"rate_stability_threshold_pct": 30,
+			"reconciliation_variance_threshold_pct": 5,
+		})
 
 	@classmethod
 	def _create_gl_entries(cls):

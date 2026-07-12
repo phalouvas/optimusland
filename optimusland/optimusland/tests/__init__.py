@@ -243,7 +243,7 @@ def get_or_create_test_bom(item_code, company=None):
 		"quantity": 1,
 		"company": company,
 		"items": [{
-			"item_code": packaging_item,
+			"item_code": packaging_item.item_code,
 			"qty": 1,
 			"rate": 0,
 		}],
