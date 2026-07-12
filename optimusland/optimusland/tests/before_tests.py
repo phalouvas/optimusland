@@ -50,6 +50,9 @@ def before_tests():
 	# Enable Serial and Batch Bundle support (ERPNext v16 requirement)
 	frappe.db.set_single_value("Stock Settings", "enable_serial_and_batch_no_for_item", 1)
 
+	# Disable DN requirement for tests (test SIs create directly, not via DN)
+	frappe.db.set_single_value("Selling Settings", "dn_required", 0)
+
 	# Ensure custom_production_plan field exists on Purchase Receipt
 	if not frappe.db.exists("Custom Field",
 		{"dt": "Purchase Receipt", "fieldname": "custom_production_plan"}):

@@ -79,6 +79,7 @@ class TestSendPaymentReminders(IntegrationTestCase):
 		settings = frappe.get_single("Optimus General Settings")
 		settings.payment_reminders_enabled = 1
 		settings.payment_reminders_email = 1
+		settings.payment_reminders_sms = 0
 		settings.save(ignore_permissions=True)
 
 	@patch("frappe.sendmail")

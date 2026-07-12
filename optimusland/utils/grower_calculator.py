@@ -462,6 +462,7 @@ def _get_config():
     settings = frappe.get_single("Optimus General Settings")
     return frappe._dict(
         default_target_margin_pct=flt(settings.default_target_margin_pct) or 6,
+        item_group=settings.item_group or "Potatoes",
         operating_lookback_days=settings.operating_lookback_days or 90,
     )
 
