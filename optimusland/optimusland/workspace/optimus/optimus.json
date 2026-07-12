@@ -1,7 +1,7 @@
 {
  "app": "optimusland",
  "charts": [],
- "content": "[{\"id\":\"vpoISZPXRj\",\"type\":\"spacer\",\"data\":{\"col\":9}},{\"id\":\"qQs1xJ10Nf\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"How To\",\"col\":3}},{\"id\":\"leswq5WQjT\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"font-size: 18px; letter-spacing: 0.18px;\\\"><b>Stock</b></span>\",\"col\":12}},{\"id\":\"aAkDplGgCA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Weight Slip\",\"col\":3}},{\"id\":\"XpU6jxgv6V\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Batch\",\"col\":3}},{\"id\":\"eL1AQy3XtU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"id\":\"fJpCeRShKK\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Note\",\"col\":3}},{\"id\":\"lBoc3PV4hL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Accounting</b></span>\",\"col\":12}},{\"id\":\"2g4DAxH-3A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":6}},{\"id\":\"K22Pn37xrA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":6}},{\"id\":\"p8f2LWuXaP\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Bank</b></span>\",\"col\":12}},{\"id\":\"obnYxjiMeI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Payment Reconciliation\",\"col\":6}},{\"id\":\"tnpFMTjdoA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank Reconciliation Tool\",\"col\":6}},{\"id\":\"CNeJWT16oG\",\"type\":\"card\",\"data\":{\"card_name\":\"People\",\"col\":4}},{\"id\":\"EGFyVzXgzk\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"sTAngQ1nsL\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}}]",
+ "content": "[{\"id\":\"leswq5WQjT\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"font-size: 18px; letter-spacing: 0.18px;\\\"><b>Stock</b></span>\",\"col\":12}},{\"id\":\"aAkDplGgCA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Weight Slip\",\"col\":3}},{\"id\":\"XpU6jxgv6V\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Batch\",\"col\":3}},{\"id\":\"eL1AQy3XtU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"id\":\"fJpCeRShKK\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Note\",\"col\":3}},{\"id\":\"lBoc3PV4hL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Accounting</b></span>\",\"col\":12}},{\"id\":\"2g4DAxH-3A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":6}},{\"id\":\"K22Pn37xrA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":6}},{\"id\":\"p8f2LWuXaP\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Bank</b></span>\",\"col\":12}},{\"id\":\"obnYxjiMeI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Payment Reconciliation\",\"col\":6}},{\"id\":\"tnpFMTjdoA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank Reconciliation Tool\",\"col\":6}},{\"id\":\"CNeJWT16oG\",\"type\":\"card\",\"data\":{\"card_name\":\"People\",\"col\":4}},{\"id\":\"EGFyVzXgzk\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"sTAngQ1nsL\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}}]",
  "creation": "2024-08-10 15:20:59.948226",
  "custom_blocks": [],
  "docstatus": 0,
@@ -122,7 +122,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-07-12 15:30:09.556928",
+ "modified": "2026-07-12 16:06:48.490425",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Optimus",
@@ -176,13 +176,6 @@
    "label": "Bank Reconciliation Tool",
    "link_to": "Bank Reconciliation Tool",
    "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "How To",
-   "type": "URL",
-   "url": "https://optimuslandcy.com/kb/employee-manual/market-cycle"
   },
   {
    "color": "Grey",
