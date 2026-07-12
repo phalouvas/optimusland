@@ -3,13 +3,11 @@
 
 import frappe
 from frappe import _
-from pathlib import Path
 
 
 def after_migrate():
 	"""Seed default data after migration."""
 	_seed_default_reminder_templates()
-	_seed_pipeline_dashboard_block()
 
 
 def _seed_default_reminder_templates():
@@ -142,37 +140,5 @@ def _seed_default_reminder_templates():
 
 
 def _seed_pipeline_dashboard_block():
-	"""Create the Pipeline Dashboard Custom HTML Block if it doesn't exist.
-
-	The block is embedded in the Manufacturing Pipeline workspace,
-	rendering the three-tier pipeline table and alerts panel.
-	"""
-	block_name = "Pipeline Dashboard"
-	if frappe.db.exists("Custom HTML Block", block_name):
-		return
-
-	base_path = Path(__file__).resolve().parent.parent / "public" / "html"
-	html_path = base_path / "pipeline_table.html"
-	js_path = base_path / "pipeline_table.js"
-	css_path = base_path / "pipeline_table.css"
-
-	if not html_path.exists():
-		frappe.log_error(
-			message=f"Pipeline dashboard HTML not found at {html_path}",
-			title="Seed Pipeline Dashboard",
-		)
-		return
-
-	html_content = html_path.read_text(encoding="utf-8")
-	script_content = js_path.read_text(encoding="utf-8") if js_path.exists() else ""
-	style_content = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
-
-	block = frappe.get_doc({
-		"doctype": "Custom HTML Block",
-		"name": block_name,
-		"html": html_content,
-		"script": script_content,
-		"style": style_content,
-		"private": 0,
-	})
-	block.insert(ignore_permissions=True)
+	"""Pipeline Dashboard removed per Issue #78. This function is now a no-op."""
+	pass

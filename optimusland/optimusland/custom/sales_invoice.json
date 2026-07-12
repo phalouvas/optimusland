@@ -726,5 +726,10 @@
    "button_color": null,
    "alignment": null
   }
- ]
+ ],
+ "doctype": "Sales Invoice",
+ "property_setters": [],
+ "custom_perms": [],
+ "links": [],
+ "sync_on_migrate": 1
 }
