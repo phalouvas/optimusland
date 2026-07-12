@@ -2,7 +2,8 @@ import frappe
 
 def daily():
     frappe.enqueue("optimusland.utils.payment_reminder.send_payment_reminders")
-    frappe.enqueue("optimusland.utils.pipeline_monitor.send_pipeline_digest")
+    # Pipeline health digest removed — see Issue #78 design decision #4.
+    # Users check the dashboard manually.
 
 # You can also define other scheduled tasks here
 # def all():

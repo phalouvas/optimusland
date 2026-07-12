@@ -1,0 +1,145 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:snapshot_date",
+ "creation": "2026-07-11 18:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "snapshot_date",
+  "operating_rate",
+  "capital_rate",
+  "base_rate",
+  "column_break_1",
+  "total_kg",
+  "lookback_days_operating",
+  "lookback_days_capital",
+  "section_break_audit",
+  "calculated_by",
+  "timestamp"
+ ],
+ "fields": [
+  {
+   "fieldname": "snapshot_date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "operating_rate",
+   "fieldtype": "Float",
+   "label": "Operating Rate (€/kg)",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "capital_rate",
+   "fieldtype": "Float",
+   "label": "Capital Rate (€/kg)",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_rate",
+   "fieldtype": "Float",
+   "label": "Base Rate (€/kg)",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_kg",
+   "fieldtype": "Float",
+   "label": "Total kg (denominator)",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lookback_days_operating",
+   "fieldtype": "Int",
+   "label": "Operating Lookback (days)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lookback_days_capital",
+   "fieldtype": "Int",
+   "label": "Capital Lookback (days)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit Info"
+  },
+  {
+   "fieldname": "calculated_by",
+   "fieldtype": "Link",
+   "label": "Calculated By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "label": "Calculation Timestamp",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-07-11 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Optimusland",
+ "name": "Blended Rate Snapshot",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "snapshot_date",
+ "sort_order": "DESC",
+ "title_field": "snapshot_date",
+ "track_changes": 0
+}

@@ -144,15 +144,10 @@ after_migrate = "optimusland.utils.setup.after_migrate"
 
 doc_events = {
     "Purchase Receipt": {
-        "on_submit": "optimusland.utils.purchase_receipt.create_production_plan",
         "validate": "optimusland.utils.purchase_receipt.set_batch_no",
+        "on_submit": "optimusland.utils.purchase_receipt.update_weight_slip_status",
+        "on_cancel": "optimusland.utils.purchase_receipt.update_weight_slip_status",
     },
-    "Delivery Note": {
-        "before_submit": "optimusland.utils.delivery_note.validate_batch_manufacture"
-    },
-#    "Purchase Invoice": {
-#        "validate": "optimusland.utils.purchase_invoice.get_purchase_receipt_items"
-#    },
 }
 
 # Scheduled Tasks

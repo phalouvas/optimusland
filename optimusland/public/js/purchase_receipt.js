@@ -22,7 +22,7 @@ frappe.ui.form.on('Purchase Receipt', {
             return {
                 filters: {
                     supplier: frm.doc.supplier || '',
-                    disabled: 0
+                    status: ['in', ['Pending', '']]
                 }
             };
         });

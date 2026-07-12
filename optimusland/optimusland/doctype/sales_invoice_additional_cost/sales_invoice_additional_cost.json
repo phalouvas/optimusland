@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-07-11 18:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "description",
+  "amount",
+  "cost_type",
+  "cost_purchase_invoice"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Description"
+  },
+  {
+   "columns": 2,
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "cost_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Cost Type",
+   "options": "\nShipping\nCold Storage\nMaterials\nOther"
+  },
+  {
+   "columns": 2,
+   "fieldname": "cost_purchase_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cost Purchase Invoice",
+   "options": "Purchase Invoice",
+   "description": "Link to a cost-related Purchase Invoice (e.g., shipping, cold storage). NOT the grower's PI."
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "max_attachments": 0,
+ "modified": "2026-07-11 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Optimusland",
+ "name": "Sales Invoice Additional Cost",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

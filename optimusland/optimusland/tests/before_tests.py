@@ -17,7 +17,6 @@ from optimusland.optimusland.tests import (
 	get_or_create_test_supplier,
 	get_or_create_test_customer,
 	get_or_create_test_potato_item,
-	get_or_create_test_bom,
 )
 
 
@@ -50,6 +49,9 @@ def before_tests():
 	"""Seed minimum test data shared across all test modules."""
 	# Enable Serial and Batch Bundle support (ERPNext v16 requirement)
 	frappe.db.set_single_value("Stock Settings", "enable_serial_and_batch_no_for_item", 1)
+
+	# Disable DN requirement for tests (test SIs create directly, not via DN)
+	frappe.db.set_single_value("Selling Settings", "dn_required", 0)
 
 	# Ensure custom_production_plan field exists on Purchase Receipt
 	if not frappe.db.exists("Custom Field",
@@ -88,7 +90,6 @@ def before_tests():
 	get_or_create_test_supplier(company.name)
 	get_or_create_test_customer(company.name)
 	potato_item = get_or_create_test_potato_item(company.name)
-	get_or_create_test_bom(potato_item.item_code, company.name)
 
 	# Seed stock for BOM components so Production Plan → Work Order →
 	# Material Transfer stock entries don't fail with NegativeStockError
