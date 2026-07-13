@@ -1,7 +1,6 @@
 {
  "actions": [],
- "allow_rename": 0,
- "creation": "2026-06-04 00:00:00.000000",
+ "creation": "2026-06-04 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -30,6 +29,7 @@
  ],
  "fields": [
   {
+   "default": "0",
    "fieldname": "payment_reminders_enabled",
    "fieldtype": "Check",
    "label": "Enable Payment Reminders"
@@ -39,17 +39,17 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "1",
    "depends_on": "payment_reminders_enabled",
    "fieldname": "payment_reminders_email",
    "fieldtype": "Check",
-   "default": "1",
    "label": "Send Email Reminders"
   },
   {
+   "default": "1",
    "depends_on": "payment_reminders_enabled",
    "fieldname": "payment_reminders_sms",
    "fieldtype": "Check",
-   "default": "1",
    "label": "Send SMS Reminders"
   },
   {
@@ -74,59 +74,59 @@
   },
   {
    "default": "90",
+   "description": "Number of days for the operating rate weighted moving average. Minimum 30.",
    "fieldname": "operating_lookback_days",
    "fieldtype": "Int",
-   "label": "Operating Rate Lookback (days)",
-   "description": "Number of days for the operating rate weighted moving average. Minimum 30.",
-   "min": 30
+   "label": "Operating Rate Lookback (days)"
   },
   {
    "default": "30",
+   "description": "Half-life in days for the exponential time-decay weighting. Lower = more weight on recent days.",
    "fieldname": "operating_half_life_days",
    "fieldtype": "Int",
-   "label": "Operating Rate Half-Life (days)",
-   "description": "Half-life in days for the exponential time-decay weighting. Lower = more weight on recent days."
+   "label": "Operating Rate Half-Life (days)"
   },
   {
    "default": "365",
+   "description": "Fixed 365-day lookback for depreciation-based capital rate.",
    "fieldname": "capital_lookback_days",
    "fieldtype": "Int",
-   "label": "Capital Rate Lookback (days)",
-   "description": "Fixed 365-day lookback for depreciation-based capital rate.",
-   "read_only": 1
+   "label": "Capital Rate Lookback (days)"
   },
   {
+   "description": "Comma-separated P&L account numbers for operating expenses (e.g., 5200, 5300, 5400). Exclude depreciation and maintenance/repair accounts.",
    "fieldname": "operating_accounts",
    "fieldtype": "Small Text",
-   "label": "Operating P&L Accounts",
-   "description": "Comma-separated P&L account numbers for operating expenses (e.g., 5200, 5300, 5400). Exclude depreciation and maintenance/repair accounts."
+   "label": "Operating P&L Accounts"
   },
   {
+   "description": "Comma-separated P&L account numbers for depreciation (e.g., 5400). Used for capital rate calculation.",
    "fieldname": "depreciation_accounts",
    "fieldtype": "Small Text",
-   "label": "Depreciation P&L Accounts",
-   "description": "Comma-separated P&L account numbers for depreciation (e.g., 5400). Used for capital rate calculation."
+   "label": "Depreciation P&L Accounts"
   },
   {
    "default": "6",
+   "description": "Default margin percentage applied to selling price in the grower price formula.",
    "fieldname": "default_target_margin_pct",
    "fieldtype": "Float",
-   "label": "Default Target Margin (%)",
-   "description": "Default margin percentage applied to selling price in the grower price formula."
+   "label": "Default Target Margin (%)"
   },
   {
+   "default": "Potatoes",
+   "description": "Only items in this group are included in the kg denominator for base rate calculation.",
    "fieldname": "item_group",
    "fieldtype": "Link",
    "label": "Item Group",
-   "options": "Item Group",
-   "description": "Only items in this group are included in the kg denominator for base rate calculation."
+   "options": "Item Group"
   },
   {
+   "default": "Kg",
+   "description": "Only items with this UOM are included in the kg denominator for base rate calculation.",
    "fieldname": "uom",
    "fieldtype": "Link",
    "label": "UOM",
-   "options": "UOM",
-   "description": "Only items with this UOM are included in the kg denominator for base rate calculation."
+   "options": "UOM"
   },
   {
    "collapsible": 1,
@@ -136,31 +136,31 @@
   },
   {
    "default": "0.20",
+   "description": "Flag if operating rate exceeds this value. Indicates possible data error or low-volume period.",
    "fieldname": "sanity_check_max_operating_rate",
    "fieldtype": "Float",
-   "label": "Max Operating Rate (\u20ac/kg)",
-   "description": "Flag if operating rate exceeds this value. Indicates possible data error or low-volume period."
+   "label": "Max Operating Rate (\u20ac/kg)"
   },
   {
    "default": "0.02",
+   "description": "Flag if operating rate falls below this value. Indicates missing GL data or misconfigured accounts.",
    "fieldname": "sanity_check_min_operating_rate",
    "fieldtype": "Float",
-   "label": "Min Operating Rate (\u20ac/kg)",
-   "description": "Flag if operating rate falls below this value. Indicates missing GL data or misconfigured accounts."
+   "label": "Min Operating Rate (\u20ac/kg)"
   },
   {
    "default": "30",
+   "description": "Max allowed month-over-month deviation before flagging for manual review. Set to 0 to disable.",
    "fieldname": "rate_stability_threshold_pct",
    "fieldtype": "Float",
-   "label": "Rate Stability Threshold (%)",
-   "description": "Max allowed month-over-month deviation before flagging for manual review. Set to 0 to disable."
+   "label": "Rate Stability Threshold (%)"
   },
   {
    "default": "5",
+   "description": "Max allowed variance between imputed (rate x kg) and actual P&L totals before flagging.",
    "fieldname": "reconciliation_variance_threshold_pct",
    "fieldtype": "Float",
-   "label": "Reconciliation Variance Threshold (%)",
-   "description": "Max allowed variance between imputed (rate x kg) and actual P&L totals before flagging."
+   "label": "Reconciliation Variance Threshold (%)"
   },
   {
    "fieldname": "section_break_variables_help",
@@ -174,10 +174,9 @@
   }
  ],
  "grid_page_length": 50,
- "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-06-04 00:00:00.000000",
+ "modified": "2026-07-13 06:03:25.348160",
  "modified_by": "Administrator",
  "module": "Optimusland",
  "name": "Optimus General Settings",
@@ -194,8 +193,6 @@
    "write": 1
   },
   {
-   "create": 0,
-   "delete": 0,
    "email": 1,
    "print": 1,
    "read": 1,
@@ -204,14 +201,8 @@
    "write": 1
   },
   {
-   "create": 0,
-   "delete": 0,
-   "email": 0,
-   "print": 0,
    "read": 1,
-   "role": "Accounts User",
-   "share": 0,
-   "write": 0
+   "role": "Accounts User"
   }
  ],
  "row_format": "Dynamic",
