@@ -113,7 +113,6 @@
    "label": "Default Target Margin (%)"
   },
   {
-   "default": "Potatoes",
    "description": "Only items in this group are included in the kg denominator for base rate calculation.",
    "fieldname": "item_group",
    "fieldtype": "Link",
@@ -121,7 +120,6 @@
    "options": "Item Group"
   },
   {
-   "default": "Kg",
    "description": "Only items with this UOM are included in the kg denominator for base rate calculation.",
    "fieldname": "uom",
    "fieldtype": "Link",
