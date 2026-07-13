@@ -107,7 +107,12 @@ function _build_html(data, margin_pct) {
     let total_proposed = 0;
 
     (data.items || []).forEach(function(item, idx) {
-        let proposed = item.recommended_price || 0;
+        // Recompute recommended price using the live margin_pct
+        let selling = parseFloat(item.selling_rate) || 0;
+        let op = parseFloat(item.operating_rate) || 0;
+        let cap = parseFloat(item.capital_rate) || 0;
+        let proposed = Math.max(selling * (1 - margin_pct / 100) - op - cap, 0);
+        proposed = Math.round(proposed * 1e6) / 1e6;
         let total = (proposed * item.qty).toFixed(2);
         total_proposed += parseFloat(total);
 
@@ -116,7 +121,7 @@ function _build_html(data, margin_pct) {
             <td>${item.batch_no || '-'}</td>
             <td>${parseFloat(item.qty).toFixed(0)}</td>
             <td>€${parseFloat(item.selling_rate).toFixed(3)}</td>
-            <td>${item.margin_pct || margin_pct}%</td>
+            <td>${margin_pct}%</td>
             <td><b>€${proposed.toFixed(3)}</b></td>
             <td><input type="number" step="0.001" class="form-control grower-price-input"
                 data-idx="${idx}" value="${proposed.toFixed(3)}" style="width:100px"></td>
