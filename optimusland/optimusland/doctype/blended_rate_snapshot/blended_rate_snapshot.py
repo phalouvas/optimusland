@@ -15,8 +15,7 @@ class BlendedRateSnapshot(Document):
 	"""
 
 	def validate(self):
-		if not self.operating_rate and not self.capital_rate:
-			frappe.throw("At least one rate component must be provided.")
+		pass
 
 	def on_update(self):
 		"""Keep the most recent 366 snapshots; auto-purge oldest."""
