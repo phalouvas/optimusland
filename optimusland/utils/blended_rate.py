@@ -489,35 +489,29 @@ def _get_cached(company):
 
 def _create_snapshot(company, result):
     """Create a Blended Rate Snapshot document."""
-    try:
-        snapshot_values = {
-            "operating_rate": result.get("operating_rate", 0),
-            "capital_rate": result.get("capital_rate", 0),
-            "base_rate": result.get("base_rate", 0),
-            "total_kg": result.get("total_kg", 0),
-            "lookback_days_operating": result.get("operating_lookback_days", 90),
-            "lookback_days_capital": result.get("capital_lookback_days", 365),
-            "calculated_by": frappe.session.user,
-            "timestamp": now_datetime(),
+    snapshot_values = {
+        "operating_rate": result.get("operating_rate", 0),
+        "capital_rate": result.get("capital_rate", 0),
+        "base_rate": result.get("base_rate", 0),
+        "total_kg": result.get("total_kg", 0),
+        "lookback_days_operating": result.get("operating_lookback_days", 90),
+        "lookback_days_capital": result.get("capital_lookback_days", 365),
+        "calculated_by": frappe.session.user,
+        "timestamp": now_datetime(),
+    }
+
+    existing_snapshot = frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
+    if existing_snapshot:
+        snap = frappe.get_doc("Blended Rate Snapshot", existing_snapshot)
+        snap.update(snapshot_values)
+        snap.save(ignore_permissions=True)
+        return
+
+    snap = frappe.get_doc(
+        {
+            "doctype": "Blended Rate Snapshot",
+            "snapshot_date": today(),
+            **snapshot_values,
         }
-
-        existing_snapshot = frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
-        if existing_snapshot:
-            snap = frappe.get_doc("Blended Rate Snapshot", existing_snapshot)
-            snap.update(snapshot_values)
-            snap.save(ignore_permissions=True)
-            return
-
-        snap = frappe.get_doc(
-            {
-                "doctype": "Blended Rate Snapshot",
-                "snapshot_date": today(),
-                **snapshot_values,
-            }
-        )
-        snap.insert(ignore_permissions=True)
-    except Exception as e:
-        frappe.log_error(
-            message=f"Failed to create Blended Rate Snapshot: {e}",
-            title="Blended Rate Snapshot Error",
-        )
+    )
+    snap.insert(ignore_permissions=True)
