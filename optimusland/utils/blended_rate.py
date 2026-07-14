@@ -501,7 +501,7 @@ def _create_snapshot(company, result):
             "timestamp": now_datetime(),
         }
 
-        existing_snapshot = frappe.db.exists("Blended Rate Snapshot", today())
+        existing_snapshot = frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
         if existing_snapshot:
             snap = frappe.get_doc("Blended Rate Snapshot", existing_snapshot)
             snap.update(snapshot_values)

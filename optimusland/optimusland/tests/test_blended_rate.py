@@ -237,7 +237,7 @@ class TestBaseRateCalculation(IntegrationTestCase):
 		settings.save(ignore_permissions=True)
 
 		second = calculate_and_snapshot(self.company_name)
-		snapshot_name = frappe.db.exists("Blended Rate Snapshot", today())
+		snapshot_name = frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
 		snapshot = frappe.get_doc("Blended Rate Snapshot", snapshot_name)
 
 		self.assertTrue(snapshot_name)
