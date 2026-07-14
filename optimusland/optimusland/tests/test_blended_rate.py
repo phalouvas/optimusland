@@ -208,6 +208,7 @@ class TestBaseRateCalculation(IntegrationTestCase):
 		)
 
 		settings = frappe.get_single("Optimus General Settings")
+		settings.payment_reminders_enabled = 0
 		settings.operating_lookback_days = (
 			181 if (settings.operating_lookback_days or 90) == 180 else 180
 		)
@@ -223,6 +224,7 @@ class TestBaseRateCalculation(IntegrationTestCase):
 
 		first = calculate_and_snapshot(self.company_name)
 		settings = frappe.get_single("Optimus General Settings")
+		settings.payment_reminders_enabled = 0
 		settings.operating_lookback_days = 180
 		settings.save(ignore_permissions=True)
 
@@ -263,7 +265,7 @@ class TestExponentialWeightedRatio(IntegrationTestCase):
 			frappe._dict(day=add_days(t, -5), gl_total=100.0, kg=10.0),     # rate 10.0
 			frappe._dict(day=add_days(t, -1), gl_total=50.0, kg=100.0),     # rate 0.5
 		]
-		ratio = _exponential_weighted_ratio(data, half_life_days=9999)
+		ratio = _exponential_weighted_ratio(data, half_life_days=10**9)
 		simple = (100.0 + 50.0) / (10.0 + 100.0)  # = 150/110 ≈ 1.3636
 		self.assertAlmostEqual(ratio, simple, places=4)
 
