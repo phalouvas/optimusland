@@ -18,7 +18,7 @@ See Issue #78 for full specification.
 """
 
 import frappe
-from frappe.utils import flt, today, add_days, now_datetime, date_diff
+from frappe.utils import flt, today, add_days, now_datetime, date_diff, get_datetime
 from math import exp, log as ln
 
 
@@ -434,6 +434,16 @@ def _get_cached(company):
     snap = snapshots[0]
     # Check if snapshot is from today (cached)
     if str(snap.snapshot_date) == str(today()):
+        settings_modified = frappe.db.get_single_value(
+            "Optimus General Settings", "modified"
+        )
+        snapshot_timestamp = get_datetime(
+            snap.timestamp or snap.get("modified") or snap.get("creation")
+        )
+
+        if settings_modified and snapshot_timestamp < get_datetime(settings_modified):
+            return None
+
         return {
             "company": company,
             "operating_rate": snap.operating_rate,
@@ -453,18 +463,29 @@ def _get_cached(company):
 def _create_snapshot(company, result):
     """Create a Blended Rate Snapshot document."""
     try:
+        snapshot_values = {
+            "operating_rate": result.get("operating_rate", 0),
+            "capital_rate": result.get("capital_rate", 0),
+            "base_rate": result.get("base_rate", 0),
+            "total_kg": result.get("total_kg", 0),
+            "lookback_days_operating": result.get("operating_lookback_days", 90),
+            "lookback_days_capital": result.get("capital_lookback_days", 365),
+            "calculated_by": frappe.session.user,
+            "timestamp": now_datetime(),
+        }
+
+        existing_snapshot = frappe.db.exists("Blended Rate Snapshot", today())
+        if existing_snapshot:
+            snap = frappe.get_doc("Blended Rate Snapshot", existing_snapshot)
+            snap.update(snapshot_values)
+            snap.save(ignore_permissions=True)
+            return
+
         snap = frappe.get_doc(
             {
                 "doctype": "Blended Rate Snapshot",
                 "snapshot_date": today(),
-                "operating_rate": result.get("operating_rate", 0),
-                "capital_rate": result.get("capital_rate", 0),
-                "base_rate": result.get("base_rate", 0),
-                "total_kg": result.get("total_kg", 0),
-                "lookback_days_operating": result.get("operating_lookback_days", 90),
-                "lookback_days_capital": result.get("capital_lookback_days", 365),
-                "calculated_by": frappe.session.user,
-                "timestamp": now_datetime(),
+                **snapshot_values,
             }
         )
         snap.insert(ignore_permissions=True)

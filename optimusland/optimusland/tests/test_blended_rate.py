@@ -182,6 +182,60 @@ class TestBaseRateCalculation(IntegrationTestCase):
 		self.assertIn("operating_rate", cached)
 		self.assertIn("base_rate", cached)
 
+	def test_get_base_rate_recalculates_after_settings_change(self):
+		"""Changing settings invalidates today's cached snapshot."""
+		from optimusland.utils.blended_rate import get_base_rate, calculate_and_snapshot
+
+		frappe.db.set_single_value(
+			"Optimus General Settings", "operating_lookback_days", 90
+		)
+		calculate_and_snapshot(self.company_name)
+
+		frappe.db.set_single_value(
+			"Optimus General Settings", "operating_lookback_days", 180
+		)
+		fresh = get_base_rate(self.company_name)
+
+		self.assertEqual(fresh.get("operating_lookback_days"), 180)
+		self.assertNotEqual(fresh.get("calculated_by"), "cached")
+
+	def test_settings_save_invalidates_todays_snapshot(self):
+		"""Saving settings clears today's snapshot so the next read recalculates."""
+		from optimusland.utils.blended_rate import calculate_and_snapshot
+
+		calculate_and_snapshot(self.company_name)
+		self.assertTrue(
+			frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
+		)
+
+		settings = frappe.get_single("Optimus General Settings")
+		settings.operating_lookback_days = (
+			181 if (settings.operating_lookback_days or 90) == 180 else 180
+		)
+		settings.save(ignore_permissions=True)
+
+		self.assertFalse(
+			frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
+		)
+
+	def test_calculate_and_snapshot_updates_todays_snapshot(self):
+		"""Recalculating on the same day updates the existing snapshot instead of duplicating it."""
+		from optimusland.utils.blended_rate import calculate_and_snapshot
+
+		first = calculate_and_snapshot(self.company_name)
+		settings = frappe.get_single("Optimus General Settings")
+		settings.operating_lookback_days = 180
+		settings.save(ignore_permissions=True)
+
+		second = calculate_and_snapshot(self.company_name)
+		snapshot_name = frappe.db.exists("Blended Rate Snapshot", today())
+		snapshot = frappe.get_doc("Blended Rate Snapshot", snapshot_name)
+
+		self.assertTrue(snapshot_name)
+		self.assertEqual(snapshot.lookback_days_operating, 180)
+		self.assertEqual(snapshot.base_rate, second.get("base_rate"))
+		self.assertNotEqual(first.get("operating_lookback_days"), second.get("operating_lookback_days"))
+
 
 class TestExponentialWeightedAverage(IntegrationTestCase):
 	"""Unit tests for the exponential weighted average formula."""

@@ -3,7 +3,9 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import today
 
 
 class OptimusGeneralSettings(Document):
-	pass
+	def on_update(self):
+		frappe.db.delete("Blended Rate Snapshot", {"snapshot_date": today()})
