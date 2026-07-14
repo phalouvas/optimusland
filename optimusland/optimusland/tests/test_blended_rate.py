@@ -208,7 +208,11 @@ class TestBaseRateCalculation(IntegrationTestCase):
 		)
 
 		settings = frappe.get_single("Optimus General Settings")
-		settings.payment_reminders_enabled = 0
+		settings.append("templates", {
+			"reminder_level": "1",
+			"channel": "Email",
+			"message": "<p>Test</p>",
+		})
 		settings.operating_lookback_days = (
 			181 if (settings.operating_lookback_days or 90) == 180 else 180
 		)
@@ -224,7 +228,11 @@ class TestBaseRateCalculation(IntegrationTestCase):
 
 		first = calculate_and_snapshot(self.company_name)
 		settings = frappe.get_single("Optimus General Settings")
-		settings.payment_reminders_enabled = 0
+		settings.append("templates", {
+			"reminder_level": "1",
+			"channel": "Email",
+			"message": "<p>Test</p>",
+		})
 		settings.operating_lookback_days = 180
 		settings.save(ignore_permissions=True)
 
