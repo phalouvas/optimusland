@@ -18,7 +18,7 @@ See Issue #78 for full specification.
 """
 
 import frappe
-from frappe.utils import flt, today, add_days, now_datetime, date_diff
+from frappe.utils import flt, today, add_days, now_datetime, date_diff, get_datetime
 from math import exp, log as ln
 
 
@@ -143,8 +143,8 @@ def _get_config(company):
         default_target_margin_pct=settings.default_target_margin_pct or 6,
         item_group=settings.item_group or "Potatoes",
         uom=settings.uom or "Kg",
-        sanity_check_max=settings.sanity_check_max_operating_rate or 0.20,
-        sanity_check_min=settings.sanity_check_min_operating_rate or 0.02,
+        sanity_check_max=settings.sanity_check_max_operating_rate or 1.00,
+        sanity_check_min=settings.sanity_check_min_operating_rate or 0.10,
         stability_threshold=settings.rate_stability_threshold_pct or 30,
         reconciliation_threshold=settings.reconciliation_variance_threshold_pct or 5,
     )
@@ -157,8 +157,27 @@ def _parse_account_list(text):
     return [a.strip() for a in text.split(",") if a.strip()]
 
 
+def _build_account_filter(account_numbers):
+    """Build SQL WHERE clause and params for account number prefix matching.
+
+    Each configured number is matched via LIKE 'prefix%' so that
+    e.g. '5200' matches child accounts '5201', '5202' etc.
+    Returns (sql_fragment, params_list).
+    """
+    if not account_numbers:
+        return "", []
+
+    conditions = []
+    params = []
+    for num in account_numbers:
+        conditions.append("acc.account_number LIKE %s")
+        params.append(f"{num}%")
+
+    return "AND (" + " OR ".join(conditions) + ")", params
+
+
 def _get_operating_rate(company, cfg):
-    """Calculate operating rate: exponential weighted average of daily P&L ÷ kg."""
+    """Calculate operating rate: exponential weighted ΣP&L / Σkg over lookback."""
     if not cfg.operating_accounts:
         frappe.msgprint("No operating accounts configured in Optimus General Settings. Operating Rate = 0.")
         return 0.0
@@ -167,13 +186,13 @@ def _get_operating_rate(company, cfg):
     daily_gl = _get_daily_gl_totals(company, cfg.operating_accounts, from_date, today())
     daily_kg = _get_daily_kg(company, from_date, today(), cfg)
 
-    # Merge GL and kg data into daily rates
-    daily_rates = _build_daily_rates(daily_gl, daily_kg)
+    # Merge GL and kg data — keeps ALL days (GL-only days contribute to numerator)
+    daily_data = _merge_daily_data(daily_gl, daily_kg)
 
-    if not daily_rates:
+    if not daily_data:
         return 0.0
 
-    return _exponential_weighted_average(daily_rates, cfg.operating_half_life_days)
+    return _exponential_weighted_ratio(daily_data, cfg.operating_half_life_days)
 
 
 def _get_capital_rate(company, cfg):
@@ -198,12 +217,15 @@ def _get_capital_rate(company, cfg):
 def _get_daily_gl_totals(company, account_numbers, from_date, to_date):
     """Get sum of debit - credit per day for given account numbers.
 
+    Uses LIKE prefix matching so configured numbers like '5200' match
+    child accounts '5201', '5202' etc.
+
     Returns dict { 'YYYY-MM-DD': total_amount }.
     """
     if not account_numbers:
         return {}
 
-    placeholders = ", ".join(["%s"] * len(account_numbers))
+    account_filter, account_params = _build_account_filter(account_numbers)
     rows = frappe.db.sql(
         f"""
         SELECT
@@ -212,13 +234,13 @@ def _get_daily_gl_totals(company, account_numbers, from_date, to_date):
         FROM `tabGL Entry` gl
         INNER JOIN `tabAccount` acc ON acc.name = gl.account
         WHERE acc.company = %s
-          AND acc.account_number IN ({placeholders})
+          {account_filter}
           AND gl.posting_date BETWEEN %s AND %s
           AND gl.is_cancelled = 0
         GROUP BY DATE(gl.posting_date)
         ORDER BY day
         """,
-        [company] + account_numbers + [from_date, to_date],
+        [company] + account_params + [from_date, to_date],
         as_dict=True,
     )
 
@@ -230,18 +252,18 @@ def _get_gl_sum(company, account_numbers, from_date, to_date):
     if not account_numbers:
         return 0.0
 
-    placeholders = ", ".join(["%s"] * len(account_numbers))
+    account_filter, account_params = _build_account_filter(account_numbers)
     row = frappe.db.sql(
         f"""
         SELECT GREATEST(SUM(gl.debit - gl.credit), 0) AS total
         FROM `tabGL Entry` gl
         INNER JOIN `tabAccount` acc ON acc.name = gl.account
         WHERE acc.company = %s
-          AND acc.account_number IN ({placeholders})
+          {account_filter}
           AND gl.posting_date BETWEEN %s AND %s
           AND gl.is_cancelled = 0
         """,
-        [company] + account_numbers + [from_date, to_date],
+        [company] + account_params + [from_date, to_date],
         as_dict=True,
     )
 
@@ -303,52 +325,57 @@ def _get_total_kg_sold(company, lookback_days, cfg=None):
     return flt(row[0].total) if row else 0.0
 
 
-def _build_daily_rates(daily_gl, daily_kg):
-    """Merge GL totals and kg into per-day rates.
+def _merge_daily_data(daily_gl, daily_kg):
+    """Merge GL totals and kg into per-day records.
 
-    Skips days with 0 kg.  Returns list of dicts: {day, gl_total, kg, rate}.
+    Keeps ALL days including those with GL but no kg sold.
+    Days with negative kg (credit notes/returns) are skipped.
+
+    Returns list of dicts: {day, gl_total, kg}, sorted by day.
     """
     all_days = set(list(daily_gl.keys()) + list(daily_kg.keys()))
-    rates = []
+    records = []
     for day in sorted(all_days):
         kg = daily_kg.get(day, 0)
         gl = daily_gl.get(day, 0)
-        if kg <= 0:
-            continue  # Skip zero/negative kg days (credit notes, returns)
-        rates.append(
+        if kg < 0:
+            continue  # Skip negative kg days (credit notes, returns)
+        records.append(
             frappe._dict(
                 day=day,
                 gl_total=gl,
                 kg=kg,
-                rate=gl / kg,
             )
         )
-    return rates
+    return records
 
 
-def _exponential_weighted_average(daily_rates, half_life_days):
-    """Calculate exponential time-decay weighted average.
+def _exponential_weighted_ratio(daily_data, half_life_days):
+    """Calculate exponential time-decay weighted ratio.
 
-    Formula:
-        weighted_rate = Σ(rate_day × e^(−λ × days_ago)) / Σ(e^(−λ × days_ago))
+    Correct formula for cost-per-kg metric:
+        weighted_rate = Σ(GL_day × e^(−λ × days_ago)) / Σ(kg_day × e^(−λ × days_ago))
         where λ = ln(2) / half_life_days
 
-    More recent days get higher weight.
+    Weight is applied to numerator (GL) and denominator (kg) independently,
+    making the result volume-aware: days with more kg contribute proportionally.
+
+    Returns 0 if total weighted kg is zero.
     """
-    if not daily_rates:
+    if not daily_data:
         return 0.0
 
     lam = ln(2) / max(half_life_days, 1)
-    latest_day = daily_rates[-1].day
+    latest_day = daily_data[-1].day
 
     numerator = 0.0
     denominator = 0.0
 
-    for dr in daily_rates:
+    for dr in daily_data:
         days_ago = date_diff(latest_day, dr.day)
         weight = exp(-lam * max(days_ago, 0))
-        numerator += dr.rate * weight
-        denominator += weight
+        numerator += dr.gl_total * weight
+        denominator += dr.kg * weight
 
     return round(numerator / denominator, 6) if denominator else 0.0
 
@@ -434,6 +461,16 @@ def _get_cached(company):
     snap = snapshots[0]
     # Check if snapshot is from today (cached)
     if str(snap.snapshot_date) == str(today()):
+        settings_modified = frappe.db.get_single_value(
+            "Optimus General Settings", "modified"
+        )
+        snapshot_timestamp = get_datetime(
+            snap.timestamp or snap.get("modified") or snap.get("creation")
+        )
+
+        if settings_modified and snapshot_timestamp < get_datetime(settings_modified):
+            return None
+
         return {
             "company": company,
             "operating_rate": snap.operating_rate,
@@ -452,24 +489,29 @@ def _get_cached(company):
 
 def _create_snapshot(company, result):
     """Create a Blended Rate Snapshot document."""
-    try:
-        snap = frappe.get_doc(
-            {
-                "doctype": "Blended Rate Snapshot",
-                "snapshot_date": today(),
-                "operating_rate": result.get("operating_rate", 0),
-                "capital_rate": result.get("capital_rate", 0),
-                "base_rate": result.get("base_rate", 0),
-                "total_kg": result.get("total_kg", 0),
-                "lookback_days_operating": result.get("operating_lookback_days", 90),
-                "lookback_days_capital": result.get("capital_lookback_days", 365),
-                "calculated_by": frappe.session.user,
-                "timestamp": now_datetime(),
-            }
-        )
-        snap.insert(ignore_permissions=True)
-    except Exception as e:
-        frappe.log_error(
-            message=f"Failed to create Blended Rate Snapshot: {e}",
-            title="Blended Rate Snapshot Error",
-        )
+    snapshot_values = {
+        "operating_rate": result.get("operating_rate", 0),
+        "capital_rate": result.get("capital_rate", 0),
+        "base_rate": result.get("base_rate", 0),
+        "total_kg": result.get("total_kg", 0),
+        "lookback_days_operating": result.get("operating_lookback_days", 90),
+        "lookback_days_capital": result.get("capital_lookback_days", 365),
+        "calculated_by": frappe.session.user,
+        "timestamp": now_datetime(),
+    }
+
+    existing_snapshot = frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
+    if existing_snapshot:
+        snap = frappe.get_doc("Blended Rate Snapshot", existing_snapshot)
+        snap.update(snapshot_values)
+        snap.save(ignore_permissions=True)
+        return
+
+    snap = frappe.get_doc(
+        {
+            "doctype": "Blended Rate Snapshot",
+            "snapshot_date": today(),
+            **snapshot_values,
+        }
+    )
+    snap.insert(ignore_permissions=True)

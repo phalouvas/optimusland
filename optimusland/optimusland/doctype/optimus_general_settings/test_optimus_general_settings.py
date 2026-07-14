@@ -1,7 +1,6 @@
 # Copyright (c) 2026, KAINOTOMO PH LTD and Contributors
 # See license.txt
 
-# import frappe
 from frappe.tests import IntegrationTestCase
 
 

@@ -15,7 +15,6 @@ Requires:
 import frappe
 from frappe.tests import IntegrationTestCase
 from frappe.utils import flt, today, add_days
-from math import exp, log as ln
 
 
 class TestBaseRateCalculation(IntegrationTestCase):
@@ -182,78 +181,181 @@ class TestBaseRateCalculation(IntegrationTestCase):
 		self.assertIn("operating_rate", cached)
 		self.assertIn("base_rate", cached)
 
+	def test_get_base_rate_recalculates_after_settings_change(self):
+		"""Changing settings invalidates today's cached snapshot."""
+		from optimusland.utils.blended_rate import get_base_rate, calculate_and_snapshot
 
-class TestExponentialWeightedAverage(IntegrationTestCase):
-	"""Unit tests for the exponential weighted average formula."""
+		frappe.db.set_single_value(
+			"Optimus General Settings", "operating_lookback_days", 90
+		)
+		calculate_and_snapshot(self.company_name)
 
-	def test_higher_weight_on_recent_days(self):
-		"""Recent days get more weight than older days."""
-		from optimusland.utils.blended_rate import _exponential_weighted_average
+		frappe.db.set_single_value(
+			"Optimus General Settings", "operating_lookback_days", 180
+		)
+		fresh = get_base_rate(self.company_name)
+
+		self.assertEqual(fresh.get("operating_lookback_days"), 180)
+		self.assertNotEqual(fresh.get("calculated_by"), "cached")
+
+	def test_settings_save_invalidates_todays_snapshot(self):
+		"""Saving settings clears today's snapshot so the next read recalculates."""
+		from optimusland.utils.blended_rate import calculate_and_snapshot
+
+		calculate_and_snapshot(self.company_name)
+		self.assertTrue(
+			frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
+		)
+
+		settings = frappe.get_single("Optimus General Settings")
+		settings.append("templates", {
+			"reminder_level": "1",
+			"channel": "Email",
+			"message": "<p>Test</p>",
+		})
+		settings.operating_lookback_days = (
+			181 if (settings.operating_lookback_days or 90) == 180 else 180
+		)
+		settings.save(ignore_permissions=True)
+
+		self.assertFalse(
+			frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
+		)
+
+	def test_calculate_and_snapshot_updates_todays_snapshot(self):
+		"""Recalculating on the same day updates the existing snapshot instead of duplicating it."""
+		from optimusland.utils.blended_rate import calculate_and_snapshot
+
+		first = calculate_and_snapshot(self.company_name)
+		settings = frappe.get_single("Optimus General Settings")
+		settings.append("templates", {
+			"reminder_level": "1",
+			"channel": "Email",
+			"message": "<p>Test</p>",
+		})
+		settings.operating_lookback_days = 180
+		settings.save(ignore_permissions=True)
+
+		second = calculate_and_snapshot(self.company_name)
+		snapshot_name = frappe.db.exists("Blended Rate Snapshot", {"snapshot_date": today()})
+		snapshot = frappe.get_doc("Blended Rate Snapshot", snapshot_name)
+
+		self.assertTrue(snapshot_name)
+		self.assertEqual(snapshot.lookback_days_operating, 180)
+		self.assertEqual(snapshot.base_rate, second.get("base_rate"))
+		self.assertNotEqual(first.get("operating_lookback_days"), second.get("operating_lookback_days"))
+
+
+class TestExponentialWeightedRatio(IntegrationTestCase):
+	"""Unit tests for the exponential time-decay weighted ratio formula."""
+
+	def test_equal_rates_give_same_result(self):
+		"""When both days have same GL/kg ratio, result equals that ratio."""
+		from optimusland.utils.blended_rate import _exponential_weighted_ratio
 		from frappe.utils import today, add_days
 		t = today()
 
-		rates = [
-			frappe._dict(day=add_days(t, -2), rate=0.10),
-			frappe._dict(day=add_days(t, -1), rate=0.50),
+		data = [
+			frappe._dict(day=add_days(t, -2), gl_total=100.0, kg=200.0),
+			frappe._dict(day=add_days(t, -1), gl_total=50.0, kg=100.0),
 		]
-		weighted = _exponential_weighted_average(rates, half_life_days=1)
-		# Should be closer to 0.50 (recent) than 0.10 (old)
-		self.assertGreater(weighted, 0.30)
+		# Both days have ratio 0.5, so result must be 0.5 regardless of weights
+		ratio = _exponential_weighted_ratio(data, half_life_days=1)
+		self.assertAlmostEqual(ratio, 0.5, places=4)
 
-	def test_equal_days_gives_simple_average(self):
-		"""With infinite half-life, result equals arithmetic mean."""
-		from optimusland.utils.blended_rate import _exponential_weighted_average
+	def test_infinite_half_life_gives_simple_sum_ratio(self):
+		"""With very long half-life, result ≈ ΣGL / Σkg."""
+		from optimusland.utils.blended_rate import _exponential_weighted_ratio
 		from frappe.utils import today, add_days
 		t = today()
 
-		rates = [
-			frappe._dict(day=add_days(t, -2), rate=0.20),
-			frappe._dict(day=add_days(t, -1), rate=0.40),
-			frappe._dict(day=t, rate=0.60),
+		data = [
+			frappe._dict(day=add_days(t, -5), gl_total=100.0, kg=10.0),     # rate 10.0
+			frappe._dict(day=add_days(t, -1), gl_total=50.0, kg=100.0),     # rate 0.5
 		]
-		# Very long half-life ≈ simple average
-		weighted = _exponential_weighted_average(rates, half_life_days=9999)
-		self.assertAlmostEqual(weighted, 0.40, places=2)
+		ratio = _exponential_weighted_ratio(data, half_life_days=10**9)
+		simple = (100.0 + 50.0) / (10.0 + 100.0)  # = 150/110 ≈ 1.3636
+		self.assertAlmostEqual(ratio, simple, places=4)
 
 	def test_empty_list_returns_zero(self):
 		"""Empty input returns 0."""
-		from optimusland.utils.blended_rate import _exponential_weighted_average
-		self.assertEqual(_exponential_weighted_average([], half_life_days=30), 0.0)
+		from optimusland.utils.blended_rate import _exponential_weighted_ratio
+		self.assertEqual(_exponential_weighted_ratio([], half_life_days=30), 0.0)
 
-	def test_single_day_returns_that_rate(self):
-		"""Single day returns its own rate regardless of half-life."""
-		from optimusland.utils.blended_rate import _exponential_weighted_average
+	def test_single_day_returns_gl_divided_by_kg(self):
+		"""Single day returns GL/kg."""
+		from optimusland.utils.blended_rate import _exponential_weighted_ratio
 		from frappe.utils import today
-		rates = [frappe._dict(day=today(), rate=0.123456)]
-		self.assertEqual(_exponential_weighted_average(rates, half_life_days=1), 0.123456)
+		data = [frappe._dict(day=today(), gl_total=500.0, kg=1000.0)]
+		self.assertEqual(_exponential_weighted_ratio(data, half_life_days=1), 0.5)
+
+	def test_zero_total_kg_returns_zero(self):
+		"""No kg across all days returns 0."""
+		from optimusland.utils.blended_rate import _exponential_weighted_ratio
+		from frappe.utils import today
+		data = [frappe._dict(day=today(), gl_total=500.0, kg=0.0)]
+		self.assertEqual(_exponential_weighted_ratio(data, half_life_days=30), 0.0)
+
+	def test_gl_only_day_pushes_ratio_up(self):
+		"""A GL-only day (kg=0) contributes to numerator, increasing the ratio."""
+		from optimusland.utils.blended_rate import _exponential_weighted_ratio
+		from frappe.utils import today, add_days
+		t = today()
+
+		data = [
+			frappe._dict(day=add_days(t, -1), gl_total=500.0, kg=0.0),   # GL only
+			frappe._dict(day=t, gl_total=500.0, kg=1000.0),               # normal
+		]
+		ratio = _exponential_weighted_ratio(data, half_life_days=9999)
+		# Total GL = 1000, total kg = 1000, so simple ratio = 1.0
+		# Without GL-only day, it would be 0.5
+		self.assertAlmostEqual(ratio, 1.0, places=4)
 
 
-class TestBuildDailyRates(IntegrationTestCase):
-	"""Unit tests for _build_daily_rates."""
+class TestMergeDailyData(IntegrationTestCase):
+	"""Unit tests for _merge_daily_data."""
 
-	def test_mixed_days(self):
-		"""Days with both GL and kg produce a rate."""
-		from optimusland.utils.blended_rate import _build_daily_rates
+	def test_includes_gl_only_days(self):
+		"""Days with GL but no kg are kept (unlike old _build_daily_rates)."""
+		from optimusland.utils.blended_rate import _merge_daily_data
 		daily_gl = {"2026-01-01": 100.0, "2026-01-02": 200.0}
-		daily_kg = {"2026-01-01": 50.0, "2026-01-02": 100.0}
-		rates = _build_daily_rates(daily_gl, daily_kg)
-		self.assertEqual(len(rates), 2)
-		self.assertEqual(rates[0].rate, 2.0)
-		self.assertEqual(rates[1].rate, 2.0)
+		daily_kg = {"2026-01-01": 50.0}
+		records = _merge_daily_data(daily_gl, daily_kg)
+		self.assertEqual(len(records), 2)
+		self.assertEqual(records[0].kg, 50.0)
+		self.assertEqual(records[1].kg, 0.0)  # GL-only day kept with kg=0
 
-	def test_zero_kg_day_skipped(self):
-		"""Days with 0 kg should be skipped."""
-		from optimusland.utils.blended_rate import _build_daily_rates
-		daily_gl = {"2026-01-01": 100.0, "2026-01-02": 200.0}
-		daily_kg = {"2026-01-01": 50.0, "2026-01-02": 0.0}
-		rates = _build_daily_rates(daily_gl, daily_kg)
-		self.assertEqual(len(rates), 1)
-		self.assertEqual(rates[0].day, "2026-01-01")
+	def test_negative_kg_skipped(self):
+		"""Days with negative kg (credit notes) are skipped."""
+		from optimusland.utils.blended_rate import _merge_daily_data
+		daily_gl = {"2026-01-01": 100.0}
+		daily_kg = {"2026-01-01": -50.0}
+		records = _merge_daily_data(daily_gl, daily_kg)
+		self.assertEqual(len(records), 0)
 
-	def test_no_kg_returns_empty(self):
-		"""No kg days returns empty list."""
-		from optimusland.utils.blended_rate import _build_daily_rates
-		self.assertEqual(_build_daily_rates({"2026-01-01": 100.0}, {}), [])
+	def test_no_gl_keeps_kg_days(self):
+		"""Days with only kg (no GL) are kept with gl_total=0."""
+		from optimusland.utils.blended_rate import _merge_daily_data
+		records = _merge_daily_data({}, {"2026-01-01": 100.0})
+		self.assertEqual(len(records), 1)
+		self.assertEqual(records[0].gl_total, 0.0)
+		self.assertEqual(records[0].kg, 100.0)
+
+	def test_empty_input_returns_empty(self):
+		"""Both dicts empty returns empty list."""
+		from optimusland.utils.blended_rate import _merge_daily_data
+		self.assertEqual(_merge_daily_data({}, {}), [])
+
+	def test_sorted_by_day(self):
+		"""Records are sorted by day ascending."""
+		from optimusland.utils.blended_rate import _merge_daily_data
+		daily_gl = {"2026-01-03": 300.0, "2026-01-01": 100.0}
+		daily_kg = {"2026-01-02": 200.0}
+		records = _merge_daily_data(daily_gl, daily_kg)
+		self.assertEqual(len(records), 3)
+		self.assertEqual(records[0].day, "2026-01-01")
+		self.assertEqual(records[1].day, "2026-01-02")
+		self.assertEqual(records[2].day, "2026-01-03")
 
 
 class TestSanityChecks(IntegrationTestCase):

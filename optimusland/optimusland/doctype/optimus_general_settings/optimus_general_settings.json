@@ -133,14 +133,14 @@
    "label": "Sanity Checks & Thresholds"
   },
   {
-   "default": "0.20",
+   "default": "1.00",
    "description": "Flag if operating rate exceeds this value. Indicates possible data error or low-volume period.",
    "fieldname": "sanity_check_max_operating_rate",
    "fieldtype": "Float",
    "label": "Max Operating Rate (\u20ac/kg)"
   },
   {
-   "default": "0.02",
+   "default": "0.10",
    "description": "Flag if operating rate falls below this value. Indicates missing GL data or misconfigured accounts.",
    "fieldname": "sanity_check_min_operating_rate",
    "fieldtype": "Float",
