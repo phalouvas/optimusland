@@ -14,6 +14,7 @@ frappe.ui.form.on("Customer", {
         if (!frm.doc.__islocal) {
             _add_net_position_section(frm, "Customer");
             _add_payment_reconciliation_action(frm, "Customer");
+            _add_party_statement_button(frm, "Customer");
         }
     },
 });
@@ -63,6 +64,40 @@ function _add_net_position_section(frm, party_type) {
             }
         },
     });
+}
+
+function _add_party_statement_button(frm, party_type) {
+	frappe.db.get_value("Party Link", {
+		primary_party: frm.doc.name,
+		primary_role: party_type
+	}, "name", (r) => {
+		if (r && r.name) {
+			_add_button(frm, r.name);
+			return;
+		}
+		// Also check as secondary party
+		frappe.db.get_value("Party Link", {
+			secondary_party: frm.doc.name,
+			secondary_role: party_type
+		}, "name", (r2) => {
+			if (r2 && r2.name) {
+				_add_button(frm, r2.name);
+			}
+		});
+	});
+}
+
+function _add_button(frm, party_link_name) {
+	frm.add_custom_button(
+		__("Party Statement"),
+		function () {
+			frappe.route_options = {
+				party_link: party_link_name,
+			};
+			frappe.set_route("query-report", "Party Accounting Ledger");
+		},
+		__("View")
+	);
 }
 
 function _create_netting_je(frm, party_type) {
