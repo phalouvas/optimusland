@@ -1,14 +1,6 @@
 // Copyright (c) 2026, KAINOTOMO PH LTD and Contributors
 // See license.txt
 
-/**
- * Supplier form script — Net Position section.
- *
- * When a Supplier has a Party Link to a Customer (dual-role party),
- * displays the net position between PI and SI outstanding amounts
- * and provides a "Create Netting Journal Entry" button.
- */
-
 frappe.ui.form.on("Supplier", {
     refresh: function (frm) {
         if (!frm.doc.__islocal) {
@@ -53,14 +45,6 @@ function _add_net_position_section(frm, party_type) {
 
                 frm.dashboard.show();
                 frm.dashboard.add_section(html, __("Net Position"));
-
-                frm.add_custom_button(
-                    __("Create Netting Journal Entry"),
-                    function () {
-                        _create_netting_je(frm, party_type);
-                    },
-                    __("Net Position")
-                );
             }
         },
     });
@@ -98,27 +82,6 @@ function _add_button(frm, party_link_name) {
 		},
 		__("View")
 	);
-}
-
-function _create_netting_je(frm, party_type) {
-    frappe.call({
-        method: "optimusland.utils.party.create_netting_journal_entry",
-        args: {
-            party_type: party_type,
-            party_name: frm.doc.name,
-        },
-        callback: function (res) {
-            if (res.message && res.message.success) {
-                frappe.show_alert({
-                    message: __("Netting JE {0} created successfully", [res.message.journal_entry]),
-                    indicator: "green",
-                });
-                frappe.set_route("Form", "Journal Entry", res.message.journal_entry);
-            } else {
-                frappe.msgprint(res.message.error || __("Could not create Netting Journal Entry."));
-            }
-        },
-    });
 }
 
 function _add_payment_reconciliation_action(frm, party_type) {

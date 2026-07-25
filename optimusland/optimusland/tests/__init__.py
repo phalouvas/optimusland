@@ -75,20 +75,19 @@ def get_or_create_test_warehouse(company=None):
 	if not company:
 		company = get_or_create_test_company().name
 
-	warehouse_name = f"Stores - {frappe.db.get_value('Company', company, 'abbr')}"
+	company_abbr = frappe.db.get_value("Company", company, "abbr")
+	warehouse_name = f"Stores - {company_abbr}"
 	if frappe.db.exists("Warehouse", warehouse_name):
 		return frappe.get_doc("Warehouse", warehouse_name)
 
-	if not frappe.db.exists("Warehouse", "_Test Warehouse"):
-		wh = frappe.get_doc({
-			"doctype": "Warehouse",
-			"warehouse_name": "_Test Warehouse",
-			"company": company,
-		})
-		wh.insert(ignore_permissions=True)
-		return wh
-
-	return frappe.get_doc("Warehouse", "_Test Warehouse")
+	# Create a company-specific warehouse instead of falling back to _Test Warehouse
+	wh = frappe.get_doc({
+		"doctype": "Warehouse",
+		"warehouse_name": "Stores",
+		"company": company,
+	})
+	wh.insert(ignore_permissions=True)
+	return wh
 
 
 # ---------------------------------------------------------------------------
