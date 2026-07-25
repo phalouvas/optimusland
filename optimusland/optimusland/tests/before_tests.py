@@ -87,6 +87,15 @@ def before_tests():
 
 	company = get_or_create_test_company()
 	warehouse = get_or_create_test_warehouse(company.name)
+
+	# Ensure Stock Settings default_warehouse points to a warehouse belonging
+	# to the test company (leftover state from other test suites may point to
+	# warehouses from different companies, causing InvalidWarehouseCompany errors).
+	company_abbr = frappe.db.get_value("Company", company.name, "abbr")
+	expected_warehouse = f"Stores - {company_abbr}"
+	if frappe.db.exists("Warehouse", expected_warehouse):
+		frappe.db.set_single_value("Stock Settings", "default_warehouse", expected_warehouse)
+
 	get_or_create_test_supplier(company.name)
 	get_or_create_test_customer(company.name)
 	potato_item = get_or_create_test_potato_item(company.name)
